@@ -1,6 +1,6 @@
-OBJS 	= main.o dropbox_server.o dropbox_client.o
-SOURCE	= main.c 
-HEADER  = HeaderFiles/Input.h
+OBJS 	= dropbox_server.o dropbox_client.o
+SOURCE	= src/Server/dropbox_server.c src/Client/dropbox_client.c
+# HEADER  = HeaderFiles/Input.h
 OUT  	= dropbox_server dropbox_client
 CC		= gcc
 FLAGS   = -g -c -Wall
@@ -9,18 +9,14 @@ FLAGS   = -g -c -Wall
 
 all: $(OUT)
 
-dropbox_server : dropbox_server.o
-	$(CC) -Wall -o dropbox_server src/Server/server.c
+dropbox_server : src/Server/dropbox_server.c
+	$(CC) -Wall -o dropbox_server src/Server/dropbox_server.c
 
-dropbox_client : dropbox_client.o
-	$(CC) -Wall -o dropbox_client dropbox_client.c -pthread
+dropbox_client : src/Client/dropbox_client.c
+	$(CC) -Wall -o dropbox_client src/Client/dropbox_client.c -pthread
 
 # create/compile the individual files >>separately<< 
-main.o: main.c
-	$(CC) $(FLAGS) main.c
 
-Input.o: src/Frontend/Input.c
-	$(CC) $(FLAGS) src/Frontend/Input.c
 
 # clean house
 clean:
