@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <errno.h>
+#include "../HeaderFiles/LinkedList.h"
+#include "headerfile.h"
 
 void perror_exit(char *msg);
 void sanitize(char *str);
@@ -34,6 +36,7 @@ void perror_exit(char *message)
 
 int main(int argc, char *argv[])
 {
+    Node *headList = NULL;
     char *localhost;
     localhost = malloc(20);
     strcpy(localhost, "127.0.0.1");
@@ -52,7 +55,8 @@ int main(int argc, char *argv[])
         max_clients = 30, activity, i, valread, sd;
     int max_sd;
     struct sockaddr_in address;
-    char buffer[1025]; //data buffer of 1K
+    char *buffer; //data buffer of 1K
+    buffer = malloc(BUFSIZ + 1);
 
     //set of socket descriptors
     fd_set readfds;
@@ -144,10 +148,10 @@ int main(int argc, char *argv[])
 
             //send new connection greeting message
             sprintf(message, "Welcome client with id %d\n", new_socket);
-            if (send(new_socket, message, strlen(message), 0) != strlen(message))
-            {
-                perror("send");
-            }
+            // if (send(new_socket, message, strlen(message), 0) != strlen(message))
+            // {
+            //     perror("send");
+            // }
 
             puts("Welcome message sent successfully");
 
@@ -164,12 +168,14 @@ int main(int argc, char *argv[])
             }
         }
         //else its some IO operation on some other socket
+        // -------------------------------> mpalitsa
         for (i = 0; i < max_clients; i++)
         {
             sd = client_socket[i];
 
             if (FD_ISSET(sd, &readfds))
             {
+                printf("kako hiiiiiiiiiiiiiii\n");
                 //Check if it was for closing , and also read the
                 //incoming message
                 if ((valread = read(sd, buffer, 1024)) == 0)
@@ -182,19 +188,32 @@ int main(int argc, char *argv[])
                     close(sd);
                     client_socket[i] = 0;
                 }
-                //Echo back the message that came in
                 else
                 {
+                    printf("Hiiii\n");
                     //set the string terminating NULL byte on the end
                     //of the data read
                     buffer[valread] = '\0';
-                    send(sd, buffer, strlen(buffer), 0);
-                    recv(sd, buffer, 1024, 0);
-                    printf("Client told me : %s", buffer);
+                    // send(sd, buffer, strlen(buffer), 0);
+                    if (strstr(buffer, "LOG_ON") != NULL)
+                    {
+                        printf("Hellos\n");
+                        logOn(headList, buffer, sd);
+                    }
+                    else if (!strcmp(buffer, "GET_CLIENTS"))
+                    {
+                        getClients();
+                    }
+                    else if (!strcmp(buffer, "LOG_OFF"))
+                    {
+                        logOff();
+                    }
                 }
             }
-        }
-    }
 
+            // ->>>>>>>>>>>>>>>>
+        }
+
+    }
     return 0;
 }

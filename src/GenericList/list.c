@@ -8,19 +8,21 @@ void printList(Node *n)
 {
     while (n != NULL)
     {
-        printf(" %d ", n->data);
+        printf(" %s %d ", n->IP, n->port);
         n = n->next;
     }
 }
 
-void push(Node **head_ref, int new_data)
+void push(Node **head_ref, char* IP, int port)
 {
     /* 1. allocate node */
     Node *new_node = (Node *)malloc(sizeof(Node));
+    new_node->IP = malloc(20);
+
 
     /* 2. put in the data  */
-    new_node->data = new_data;
-
+    strcpy(new_node->IP, IP);
+    new_node->port = port;
     /* 3. Make next of new node as head */
     new_node->next = (*head_ref);
 
@@ -30,13 +32,13 @@ void push(Node **head_ref, int new_data)
 
 /* Given a reference (pointer to pointer) to the head of a list 
    and a key, deletes the first occurrence of key in linked list */
-void deleteNode(Node **head_ref, int key)
+void deleteNode(Node **head_ref, char* IP, int port)
 {
     // Store head node
     Node *temp = *head_ref, *prev;
 
     // If head node itself holds the key to be deleted
-    if (temp != NULL && temp->data == key)
+    if (temp != NULL && (!strcmp(temp->IP, IP)) && (temp->port == port))
     {
         *head_ref = temp->next; // Changed head
         free(temp);             // free old head
@@ -45,7 +47,7 @@ void deleteNode(Node **head_ref, int key)
 
     // Search for the key to be deleted, keep track of the
     // previous node as we need to change 'prev->next'
-    while (temp != NULL && temp->data != key)
+    while (temp != NULL && ((strcmp(temp->IP, IP)) || (temp->port != port)))
     {
         prev = temp;
         temp = temp->next;
@@ -64,9 +66,28 @@ void deleteNode(Node **head_ref, int key)
 void deleteList(Node **head_ref)
 {
     Node *temp = *head_ref, *prev;
-    while(temp != NULL){
+    while (temp != NULL)
+    {
         prev = temp;
         temp = temp->next;
         free(prev);
     }
+}
+
+int exists(Node **head_ref, char *IP, int port)
+{
+    // Store head node
+    Node *temp = *head_ref;
+
+    while (temp != NULL)
+    {
+        if ((!strcmp(temp->IP, IP)) && (temp->port == port))
+        {
+            // found it
+            return 1;
+        }
+        temp = temp->next;
+    }
+
+    return 0;
 }
