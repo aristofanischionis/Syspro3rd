@@ -20,15 +20,19 @@ void perror_exit(char *message)
 void *Mainthread(void *args)
 {
     // Two buffer are for message communication
-    printf("Hello i am Mainthread \n");
     struct args_MainThread *arguments;
     char *clientIP;
     clientIP = malloc(20);
     strcpy(clientIP, "127.0.0.1");
     arguments = (struct args_MainThread *)args;
-    char buffer1[256], buffer2[256];
+    char *message;
+    message = malloc(256);
     struct sockaddr_in my_addr, my_addr1;
     int client = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (setsockopt(client, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+        perror_exit("setsockopt(SO_REUSEADDR) failed");
+
     if (client < 0)
         printf("Error in client creating\n");
     else
@@ -41,7 +45,6 @@ void *Mainthread(void *args)
     // This ip address will change according to the machine
     my_addr.sin_addr.s_addr = inet_addr(arguments->serverIP);
 
-    // Explicitly assigning port number 12010 by
     // binding client with that port
     my_addr1.sin_family = AF_INET;
     my_addr1.sin_addr.s_addr = INADDR_ANY;
@@ -55,17 +58,17 @@ void *Mainthread(void *args)
         printf("Binded Correctly\n");
     else
         printf("Unable to bind\n");
-
-    int con = connect(client, (struct sockaddr *)&my_addr, sizeof my_addr);
+    
+    int con = connect(client, (struct sockaddr *)&my_addr, sizeof(struct sockaddr_in));
     if (con == 0)
         printf("Client Connected\n");
     else
         printf("Error in Connection\n");
 
-    strcpy(buffer2, "Hello");
-    send(client, buffer2, 256, 0);
-    recv(client, buffer1, 256, 0);
-    printf("Server : %s\n", buffer1);
+    strcpy(message, "Hello i am client\n");
+    send(client, message, 256, 0);
+    recv(client, message, 256, 0);
+    printf("Server : %s", message);
     close(client);
     return NULL;
 }

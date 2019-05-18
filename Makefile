@@ -1,4 +1,4 @@
-OBJS 	= dropbox_server.o dropbox_client.o
+OBJS 	= dropbox_server.o dropbox_client.o functions.o
 SOURCE	= src/Server/dropbox_server.c src/Client/dropbox_client.c src/Client/functions.c
 HEADER  = src/Client/headerfile.h
 OUT  	= dropbox_server dropbox_client
