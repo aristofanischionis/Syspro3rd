@@ -189,6 +189,8 @@ int main(int argc, char *argv[])
                     //of the data read
                     buffer[valread] = '\0';
                     send(sd, buffer, strlen(buffer), 0);
+                    recv(sd, buffer, 1024, 0);
+                    printf("Client told me : %s", buffer);
                 }
             }
         }
