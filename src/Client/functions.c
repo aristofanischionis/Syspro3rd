@@ -1,13 +1,14 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <time.h>
+#include <sys/un.h>
 #include <string.h>
-#include <ctype.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include "headerfile.h"
 /*  Print  error  message  and  exit  */
 void perror_exit(char *message)
@@ -16,47 +17,55 @@ void perror_exit(char *message)
     exit(EXIT_FAILURE);
 }
 
-/*  Write ()  repeatedly  until  ’size ’ bytes  are  written  */
-int write_all(int fd, void *buff, size_t size)
+void *Mainthread(void *args)
 {
-    int sent, n;
-    for (sent = 0; sent < size; sent += n)
-    {
-        if ((n = write(fd, buff + sent, size - sent)) == -1)
-            return -1; /*  error  */
-    }
-    return sent;
-}
+    // Two buffer are for message communication
+    printf("Hello i am Mainthread \n");
+    struct args_MainThread *arguments;
+    char *clientIP;
+    clientIP = malloc(20);
+    strcpy(clientIP, "127.0.0.1");
+    arguments = (struct args_MainThread *)args;
+    char buffer1[256], buffer2[256];
+    struct sockaddr_in my_addr, my_addr1;
+    int client = socket(AF_INET, SOCK_STREAM, 0);
+    if (client < 0)
+        printf("Error in client creating\n");
+    else
+        printf("Client Created\n");
 
-int Initialisation(char *serverIP, int serverPort)
-{
-    // Firstly connect to server
-    struct sockaddr_in servadd; /*  The  address  of  server  */
-    struct hostent *hp;         /*  to  resolve  server  ip */
-    int sock, n_read;           /*  socket  and  message  length  */
-    struct sockaddr_in *tempClient;
-    /*  Step  1:  Get a  socket  */
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        perror_exit("socket"); /*  Step  2:  lookup  server ’s  address  and  connect  there  */
-    if ((hp = gethostbyname(serverIP)) == NULL)
-    {
-        herror("gethostbyname");
-        exit(1);
-    }
-    memcpy(&servadd.sin_addr, hp->h_addr, hp->h_length);
-    servadd.sin_port = htons(serverPort); /*  set  port  number  */
-    servadd.sin_family = AF_INET;         /*  set  socket  type  */
-    if (connect(sock, (struct sockaddr *)&servadd, sizeof(servadd)) != 0)
-        perror_exit("connect"); /*  Step  3:  send  directory  name +  newline  */
-    if (write_all(sock, "LOG_ON\n", 7) == -1)
-        perror_exit("LOG_ON");
-    if (write_all(sock, "GET_CLIENTS\n", 13) == -1)
-        perror_exit("write"); /*  Step  4:  read  back  results  and  send  them  to  stdout  */
-    while ((n_read = read(sock, tempClient, sizeof(struct sockaddr_in))) > 0){
-        // read one by one the clients and push them in the list which will be given as a parameter with a pointer
-        
-    }
-    
-    close(sock);
-    return 0;
+    my_addr.sin_family = AF_INET;
+    my_addr.sin_addr.s_addr = INADDR_ANY;
+    my_addr.sin_port = htons(arguments->serverPort);
+
+    // This ip address will change according to the machine
+    my_addr.sin_addr.s_addr = inet_addr(arguments->serverIP);
+
+    // Explicitly assigning port number 12010 by
+    // binding client with that port
+    my_addr1.sin_family = AF_INET;
+    my_addr1.sin_addr.s_addr = INADDR_ANY;
+    my_addr1.sin_port = htons(arguments->clientPort);
+
+    // This ip address will change according to the machine
+    my_addr1.sin_addr.s_addr = inet_addr(clientIP);
+
+    printf("clientip %s, clientport %d,  serverip %s, serverport %d \n", inet_ntoa(my_addr1.sin_addr), ntohs(my_addr1.sin_port), inet_ntoa(my_addr.sin_addr), ntohs(my_addr.sin_port));
+    if (bind(client, (struct sockaddr *)&my_addr1, sizeof(struct sockaddr_in)) == 0)
+        printf("Binded Correctly\n");
+    else
+        printf("Unable to bind\n");
+
+    int con = connect(client, (struct sockaddr *)&my_addr, sizeof my_addr);
+    if (con == 0)
+        printf("Client Connected\n");
+    else
+        printf("Error in Connection\n");
+
+    strcpy(buffer2, "Hello");
+    send(client, buffer2, 256, 0);
+    recv(client, buffer1, 256, 0);
+    printf("Server : %s\n", buffer1);
+    close(client);
+    return NULL;
 }

@@ -8,6 +8,7 @@
 #include <time.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
 #include "headerfile.h"
 #define MAX_PATH 200
 
@@ -41,9 +42,11 @@ void paramChecker(int n, char *argv[], char *toCheck, char **result)
 
 int main(int argc, char *argv[])
 {
+    struct args_MainThread arguments;
     int n = argc;
     char *dirName, *portNum, *workerThreads, *bufferSize, *serverPortStr, *serverIP;
     int port = 0, threadsNum = 0, bSize = 0, serverPort = 0;
+    pthread_t *threads;
     // init strings
     dirName = (char *)malloc(MAX_PATH);
     portNum = (char *)malloc(8);
@@ -70,7 +73,15 @@ int main(int argc, char *argv[])
     free(serverPortStr);
     //
     // start
-    Initialisation(serverIP, serverPort);
+    threads = malloc(threadsNum * sizeof(pthread_t));
+    arguments.clientPort = port;
+    arguments.serverPort = serverPort;
+
+    strcpy(arguments.serverIP, serverIP);
+    printf("before thread\n");
+    pthread_create(&threads[0], NULL, Mainthread, &arguments);
     //
-    return 0;
+    pthread_join(threads[0], NULL); 
+    printf("After Thread\n"); 
+    exit(0); 
 }
