@@ -2,7 +2,7 @@
 #define SERVER_HEADER
 #include "../HeaderFiles/LinkedList.h"
 
-void logOn(Node *headList, char *buffer, int sd);
-void getClients();
-void logOff();
+void logOn(Node **headList, char *buffer, int sd, int max_clients, int client_socket[]);
+void getClients(Node **headList, int sd);
+void logOff(Node **headList, int sd, int max_clients, int client_socket[]);
 #endif

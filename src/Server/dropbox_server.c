@@ -175,7 +175,6 @@ int main(int argc, char *argv[])
 
             if (FD_ISSET(sd, &readfds))
             {
-                printf("kako hiiiiiiiiiiiiiii\n");
                 //Check if it was for closing , and also read the
                 //incoming message
                 if ((valread = read(sd, buffer, 1024)) == 0)
@@ -190,23 +189,21 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("Hiiii\n");
                     //set the string terminating NULL byte on the end
                     //of the data read
                     buffer[valread] = '\0';
                     // send(sd, buffer, strlen(buffer), 0);
                     if (strstr(buffer, "LOG_ON") != NULL)
                     {
-                        printf("Hellos\n");
-                        logOn(headList, buffer, sd);
+                        logOn(&headList, buffer, sd, max_clients, client_socket);
                     }
                     else if (!strcmp(buffer, "GET_CLIENTS"))
                     {
-                        getClients();
+                        getClients(&headList, sd);
                     }
                     else if (!strcmp(buffer, "LOG_OFF"))
                     {
-                        logOff();
+                        logOff(&headList, sd, max_clients, client_socket);
                     }
                 }
             }

@@ -25,8 +25,9 @@ void *Mainthread(void *args)
     clientIP = malloc(20);
     strcpy(clientIP, "127.0.0.1");
     arguments = (struct args_MainThread *)args;
-    char *message;
-    message = malloc(BUFSIZ+1);
+    char *message, *receivedMes;
+    message = malloc(BUFSIZ + 1);
+    receivedMes = malloc(BUFSIZ + 1);
     struct sockaddr_in my_addr, my_addr1;
     int client = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -58,17 +59,27 @@ void *Mainthread(void *args)
         printf("Binded Correctly\n");
     else
         printf("Unable to bind\n");
-    
+
     int con = connect(client, (struct sockaddr *)&my_addr, sizeof(struct sockaddr_in));
     if (con == 0)
         printf("Client Connected\n");
     else
         printf("Error in Connection\n");
 
+    // ------------------------ LOG_ON---------------------
     sprintf(message, "LOG_ON < %s , %d >", inet_ntoa(my_addr1.sin_addr), ntohs(my_addr1.sin_port));
     send(client, message, BUFSIZ, 0);
-    recv(client, message, BUFSIZ, 0);
-    printf("Server : %s", message);
+    recv(client, receivedMes, BUFSIZ, 0);
+    printf("Server : %s\n", receivedMes);
+    // ------------------------ GET_CLIENTS----------------
+    sprintf(message, "GET_CLIENTS");
+    recv(client, receivedMes, BUFSIZ, 0);
+    printf("Server : %s\n", receivedMes);
+
+    // ------------------------ LOG_OFF----------------
+    sprintf(message, "LOG_OFF");
+    recv(client, receivedMes, BUFSIZ, 0);
+    printf("Server : %s\n", receivedMes);
     close(client);
     return NULL;
 }
