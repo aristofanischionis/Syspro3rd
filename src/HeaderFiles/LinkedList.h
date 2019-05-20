@@ -15,7 +15,7 @@ int deleteNode(Node **head_ref, char *IP, int port);
 void push(Node **head_ref, char *IP, int port);
 void printList(Node *n);
 int countNodes(Node *n);
-void listToString(Node **head_ref, char *result);
+void listToString(Node *head_ref, char **result);
 int exists(Node **head_ref, char *IP, int port);
 
 #endif

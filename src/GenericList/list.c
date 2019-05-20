@@ -114,49 +114,39 @@ int exists(Node **head_ref, char *IP, int port)
     return 0;
 }
 
-void appendString(char *new_str, char *str1, char *str2)
+void appendString(char **new_str, char *str1, char *str2)
 {
-    if ((new_str = malloc(strlen(str1) + strlen(str2) + 1)) != NULL)
-    {
-        new_str[0] = '\0'; // ensures the memory is an empty string
-        strcat(new_str, str1);
-        strcat(new_str, str2);
-    }
-    else
-    {
-        fprintf(stderr, "malloc failed!\n");
-        exit(EXIT_FAILURE);
-    }
+
+    *new_str[0] = '\0'; // ensures the memory is an empty string
+    strcat(*new_str, str1);
+    strcat(*new_str, str2);
 }
 
-void listToString(Node **head_ref, char *result)
+void listToString(Node *head_ref, char **result)
 {
     int nodes = 0;
-    Node *temp = *head_ref;
-    nodes = countNodes(*head_ref);
-    char *initStr, *retrIpPort, *res;
-    res = malloc(30);
+    Node *temp = head_ref;
+    nodes = countNodes(head_ref);
+    char *initStr, *retrIpPort;
+    char *str1, *str2;
     initStr = malloc(30);
-    retrIpPort = malloc(30);
+    retrIpPort = malloc(60);
+    str1 = malloc(BUFSIZ);
+    str2 = malloc(60);
     initStr[0] = '\0';
     sprintf(initStr, "CLIENT_LIST %d ", nodes);
-    strcpy(res, initStr);
-
+    strcpy(*result, initStr);
     while (temp != NULL)
     {
         sprintf(retrIpPort, "< %s , %d > ", temp->IP, temp->port);
-        char *str1, *str2;
-        str1 = malloc(30);
-        str2 = malloc(30);
-        strcpy(str1, res);
+        strcpy(str1, *result);
         strcpy(str2, retrIpPort);
-        free(res);
-        appendString(res, str1, str2);
+        appendString(result, str1, str2);
         temp = temp->next;
     }
 
-    printf(":::::::This is the list to string function::::::::::\n");
-    printf("My final string is : %s\n", res);
-
-    strcpy(result, res);
+    free(initStr);
+    free(retrIpPort);
+    free(str1);
+    free(str2);
 }
