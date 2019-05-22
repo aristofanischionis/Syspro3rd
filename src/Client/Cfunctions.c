@@ -30,6 +30,7 @@ void *Mainthread(void *args)
     char *message, *receivedMes;
     message = malloc(BUFSIZ + 1);
     receivedMes = malloc(BUFSIZ + 1);
+    strcpy(receivedMes, "");
     struct sockaddr_in server_addr, client_addr;
     // int client = socket(AF_INET, SOCK_STREAM, 0);
     int server = socket(AF_INET, SOCK_STREAM, 0);
@@ -59,6 +60,10 @@ void *Mainthread(void *args)
     //     printf("Binded Correctly\n");
     // else
     //     printf("Unable to bind\n");
+    // if (bind(server, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in)) == 0)
+    //     printf("Binded Correctly\n");
+    // else
+    //     printf("Unable to bind\n");
     // if (listen(client, 3) < 0)
     //     perror_exit("listen");
     // printf("Listening  for  connections  to port %d\n", arguments->clientPort);
@@ -67,10 +72,12 @@ void *Mainthread(void *args)
         printf("Client Connected\n");
     else
         printf("Error in Connection\n");
-    
-    sendLogOn(client_addr, server);
-    recv(server, receivedMes, BUFSIZ, 0);
-    printf("--------------->Server : %s\n", receivedMes);
+
+    // sendLogOn(client_addr, server);
+    // recv(server, receivedMes, BUFSIZ, 0);
+    // this should be welcome
+    // after that I know
+    // printf("--------------->Server : %s\n", receivedMes);
     // sendGetClients(client_addr, server);
     // ---------------------------------------------------------------------------
 
@@ -117,6 +124,7 @@ void *Mainthread(void *args)
     //accept the incoming connection
     addrlen = sizeof(client_addr);
     puts("Waiting for connections ...");
+    sendLogOn(client_addr, server);
     while (1)
     {
         //clear the socket set
@@ -141,6 +149,7 @@ void *Mainthread(void *args)
 
         //wait for an activity on one of the sockets , timeout is NULL ,
         //so wait indefinitely
+
         activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
 
         if ((activity < 0) && (errno != EINTR))
@@ -150,6 +159,7 @@ void *Mainthread(void *args)
 
         //If something happened on the master socket ,
         //then its an incoming connection
+
         if (FD_ISSET(client, &readfds))
         {
             if ((new_socket = accept(client, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen)) < 0)
@@ -160,16 +170,6 @@ void *Mainthread(void *args)
 
             //inform user of socket number - used in send and receive commands
             printf("New connection , socket fd is %d , ip is : %s , port : %d\n ", new_socket, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-            //send new connection greeting message
-            // sprintf(message, "Welcome client with id %d\n", new_socket);
-            // if (send(new_socket, message, strlen(message), 0) != strlen(message))
-            // {
-            //     perror("send");
-            // }
-
-            // puts("Welcome message sent successfully");
-
             //add new socket to array of sockets
             for (i = 0; i < max_clients; i++)
             {
@@ -184,6 +184,7 @@ void *Mainthread(void *args)
         }
         //else its some IO operation on some other socket
         // -------------------------------> mpalitsa
+
         for (i = 0; i < max_clients; i++)
         {
             sd = client_socket[i];
@@ -195,9 +196,9 @@ void *Mainthread(void *args)
                 if ((valread = read(sd, receivedMes, 1024)) == 0)
                 {
                     //Somebody disconnected , get his details and print
-                    getpeername(sd, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
-                    printf("Host disconnected , ip %s , port %d \n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-                    //Close the socket and mark as 0 in list for reuse
+                    // getpeername(sd, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
+                    // printf("Host disconnected , ip %s , port %d \n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+                    // //Close the socket and mark as 0 in list for reuse
                     close(sd);
                     client_socket[i] = 0;
                 }
@@ -222,19 +223,21 @@ void *Mainthread(void *args)
                     // possible responses from Server
                     else if (strstr(receivedMes, "CLIENT_LIST") != NULL)
                     {
-                        printf("I got a client list %s \n", receivedMes);
+                        printf("I got a client list ------> //// %s \n", receivedMes);
 
-                        sleep(30);
-                        sendLogOff(client_addr, client);
+                        
+                        sendLogOff(clientIP, arguments->clientPort, server);
                     }
-                    else if (!strcmp(receivedMes, "WELCOME")){
-                        sendGetClients(client_addr, client);
+                    else if (!strcmp(receivedMes, "WELCOME"))
+                    {
+                        printf("I am in welcome read!!!!!!!!!!!!!\n");
+                        sleep(10);
+                        sendGetClients(server);
                     }
                     else
                     {
                         // it's just a message from server
                         printf("Server told me--->: %s \n", receivedMes);
-
                     }
                 }
             }
@@ -244,31 +247,6 @@ void *Mainthread(void *args)
     }
 
     // ===========================================================================
-
-    
-
-    // ------------------------ LOG_ON---------------------
-    // sprintf(message, "LOG_ON < %s , %d >", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-    // send(server, message, BUFSIZ, 0);
-    // recv(server, receivedMes, BUFSIZ, 0);
-    // printf("Server : %s\n", receivedMes);
-    // // ------------------------ GET_CLIENTS----------------
-    // sprintf(message, "GET_CLIENTS");
-    // send(server, message, 13, 0);
-    // recv(server, receivedMes, BUFSIZ, 0);
-    // printf("Server : %s\n", receivedMes);
-
-    // sleep(30);
-    // // ------------------------ LOG_OFF----------------
-    // sprintf(message, "LOG_OFF");
-    // send(server, message, 9, 0);
-    // recv(server, receivedMes, BUFSIZ, 0);
-    // printf("Server : %s\n", receivedMes);
-    // close(server);
-
-    // ----------------------- Make client a server to listen to its port
-    // ----------------------- already binded ip port of client
-
     return NULL;
 }
 
@@ -278,11 +256,11 @@ void sendLogOn(struct sockaddr_in client_addr, int server)
     char *message;
     message = malloc(BUFSIZ + 1);
     sprintf(message, "LOG_ON < %s , %d >", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-    send(server, message, BUFSIZ, 0);
+    send(server, message, strlen(message), 0);
     free(message);
 }
 
-void sendGetClients(struct sockaddr_in client_addr, int server)
+void sendGetClients(int server)
 {
     // ------------------------ GET_CLIENTS---------------------
     char *message;
@@ -292,13 +270,14 @@ void sendGetClients(struct sockaddr_in client_addr, int server)
     free(message);
 }
 
-void sendLogOff(struct sockaddr_in client_addr, int server)
+void sendLogOff(char* IP, int port, int server)
 {
     // ------------------------ LOG_OFF---------------------
     char *message;
-    message = malloc(10);
-    sprintf(message, "LOG_OFF");
-    send(server, message, 9, 0);
+    message = malloc(BUFSIZ + 1);
+    sprintf(message, "LOG_OFF < %s , %d >", IP, port);
+    printf("eimai o client-------> message: %s \n", message);
+    send(server, message, strlen(message), 0);
     free(message);
     close(server);
 }

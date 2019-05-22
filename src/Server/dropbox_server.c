@@ -51,7 +51,9 @@ int main(int argc, char *argv[])
     message = malloc(256);
     // select
     int opt = 1;
-    int master_socket, addrlen, new_socket, client_socket[30],
+    int *client_socket;
+    client_socket = malloc(30 * sizeof(int));
+    int master_socket, addrlen, new_socket,
         max_clients = 30, activity, i, valread, sd;
     int max_sd;
     struct sockaddr_in address;
@@ -147,13 +149,13 @@ int main(int argc, char *argv[])
             printf("New connection , socket fd is %d , ip is : %s , port : %d\n ", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
             //send new connection greeting message
-            sprintf(message, "Welcome client with id %d\n", new_socket);
+            // sprintf(message, "Welcome client with id %d\n", new_socket);
             // if (send(new_socket, message, strlen(message), 0) != strlen(message))
             // {
             //     perror("send");
             // }
 
-            puts("Welcome message sent successfully");
+            // puts("Welcome message sent successfully");
 
             //add new socket to array of sockets
             for (i = 0; i < max_clients; i++)
@@ -195,16 +197,39 @@ int main(int argc, char *argv[])
                     // send(sd, buffer, strlen(buffer), 0);
                     if (strstr(buffer, "LOG_ON") != NULL)
                     {
-                        logOn(&headList, buffer, sd, max_clients, client_socket);
+                        int cliSocket;
+                        cliSocket = logOn(&headList, buffer, sd, max_clients, &client_socket, &max_sd, readfds);
+                        recv(sd, buffer, 1024, 0);
+                        printf("buffer -------> %s\n", buffer);
+                        if(!strcmp(buffer, "GET_CLIENTS")){
+                            getClients(&headList, cliSocket); 
+                            recv(sd, buffer, 1024, 0);
+                            if(strstr(buffer, "LOG_OFF") != NULL){
+                                logOff(&headList, buffer, cliSocket, max_clients, client_socket);
+                                recv(sd, buffer, 1024, 0);
+                                printf("1buffer read --> %s\n", buffer);
+                            }
+                            else {
+                                printf("2buffer read --> %s\n", buffer);
+                            }
+                        }
+                        else{
+                            printf("3buffer read --> %s\n", buffer);
+                        }
                     }
-                    else if (!strcmp(buffer, "GET_CLIENTS"))
-                    {
-                        getClients(&headList, sd);
-                    }
-                    else if (!strcmp(buffer, "LOG_OFF"))
-                    {
-                        logOff(&headList, sd, max_clients, client_socket);
-                    }
+                    // else if (!strcmp(buffer, "GET_CLIENTS"))
+                    // {
+                    //     getClients(&headList, sd);
+                    // }
+                    // else if (!strcmp(buffer, "LOG_OFF"))
+                    // {
+                    //     logOff(&headList, buffer, cliSocket, max_clients, client_socket);
+                    // }
+                    // else {
+                    //     printf("I read something else: %s \n", buffer);
+                    // }
+
+
                 }
             }
 
