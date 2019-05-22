@@ -226,12 +226,12 @@ void *Mainthread(void *args)
                         printf("I got a client list ------> //// %s \n", receivedMes);
 
                         
-                        sendLogOff(clientIP, arguments->clientPort, server);
+                        // sendLogOff(clientIP, arguments->clientPort, server);
                     }
                     else if (!strcmp(receivedMes, "WELCOME"))
                     {
                         printf("I am in welcome read!!!!!!!!!!!!!\n");
-                        sleep(10);
+                        // sleep(10);
                         sendGetClients(server);
                     }
                     else

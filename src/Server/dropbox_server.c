@@ -203,15 +203,15 @@ int main(int argc, char *argv[])
                         printf("buffer -------> %s\n", buffer);
                         if(!strcmp(buffer, "GET_CLIENTS")){
                             getClients(&headList, cliSocket); 
-                            recv(sd, buffer, 1024, 0);
-                            if(strstr(buffer, "LOG_OFF") != NULL){
-                                logOff(&headList, buffer, cliSocket, max_clients, client_socket);
-                                recv(sd, buffer, 1024, 0);
-                                printf("1buffer read --> %s\n", buffer);
-                            }
-                            else {
-                                printf("2buffer read --> %s\n", buffer);
-                            }
+                            // recv(sd, buffer, 1024, 0);
+                            // if(strstr(buffer, "LOG_OFF") != NULL){
+                            //     logOff(&headList, buffer, cliSocket, max_clients, client_socket);
+                            //     recv(sd, buffer, 1024, 0);
+                            //     printf("1buffer read --> %s\n", buffer);
+                            // }
+                            // else {
+                            //     printf("2buffer read --> %s\n", buffer);
+                            // }
                         }
                         else{
                             printf("3buffer read --> %s\n", buffer);
