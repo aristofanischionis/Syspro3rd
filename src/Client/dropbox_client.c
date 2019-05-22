@@ -7,6 +7,7 @@
 #include <netdb.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
 #include <ctype.h>
 #include <pthread.h>
 #include "headerfile.h"
@@ -72,6 +73,8 @@ int main(int argc, char *argv[])
     free(bufferSize);
     free(serverPortStr);
     //
+    
+
     // start
     threads = malloc(threadsNum * sizeof(pthread_t));
     arguments.clientPort = port;

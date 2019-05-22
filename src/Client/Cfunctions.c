@@ -5,11 +5,14 @@
 #include <string.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+
 #include "headerfile.h"
 #include "../HeaderFiles/Common.h"
 /*  Print  error  message  and  exit  */
@@ -19,11 +22,22 @@ void perror_exit(char *message)
     exit(EXIT_FAILURE);
 }
 
+char* clientIP;
+int port, server;
+
+void terminating(){
+
+    printf("terminating-------------->\n");
+    sendLogOff(clientIP, port, server);
+    pthread_exit(NULL);
+    exit(0);
+}
+
 void *Mainthread(void *args)
 {
     // Two buffer are for message communication
     struct args_MainThread *arguments;
-    char *clientIP;
+    // char *clientIP;
     clientIP = malloc(20);
     strcpy(clientIP, "127.0.0.1");
     arguments = (struct args_MainThread *)args;
@@ -33,7 +47,7 @@ void *Mainthread(void *args)
     strcpy(receivedMes, "");
     struct sockaddr_in server_addr, client_addr;
     // int client = socket(AF_INET, SOCK_STREAM, 0);
-    int server = socket(AF_INET, SOCK_STREAM, 0);
+    server = socket(AF_INET, SOCK_STREAM, 0);
 
     // if (setsockopt(client, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
     //     perror_exit("setsockopt(SO_REUSEADDR) failed");
@@ -53,7 +67,13 @@ void *Mainthread(void *args)
     client_addr.sin_family = AF_INET;
     client_addr.sin_addr.s_addr = inet_addr(clientIP);
     client_addr.sin_port = htons(arguments->clientPort);
-
+    port = arguments->clientPort;
+    // signal(SIGINT, terminating);
+    struct sigaction a;
+    a.sa_handler = terminating;
+    a.sa_flags = 0;
+    sigemptyset(&a.sa_mask);
+    sigaction(SIGINT, &a, NULL);
     // ----------------> esablish client socket
     printf("clientip %s, clientport %d,  serverip %s, serverport %d \n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
     // if (bind(client, (struct sockaddr *)&client_addr, sizeof(struct sockaddr_in)) == 0)

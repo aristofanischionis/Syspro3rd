@@ -217,17 +217,18 @@ int main(int argc, char *argv[])
                             printf("3buffer read --> %s\n", buffer);
                         }
                     }
-                    // else if (!strcmp(buffer, "GET_CLIENTS"))
-                    // {
-                    //     getClients(&headList, sd);
-                    // }
-                    // else if (!strcmp(buffer, "LOG_OFF"))
-                    // {
-                    //     logOff(&headList, buffer, cliSocket, max_clients, client_socket);
-                    // }
-                    // else {
-                    //     printf("I read something else: %s \n", buffer);
-                    // }
+                    else if (!strcmp(buffer, "GET_CLIENTS"))
+                    {
+                        getClients(&headList, sd);
+                    }
+                    else if (!strcmp(buffer, "LOG_OFF"))
+                    {
+                        printf("buffer --> %s\n", buffer);
+                        // logOff(&headList, buffer, cliSocket, max_clients, client_socket);
+                    }
+                    else {
+                        printf("I read something else: %s \n", buffer);
+                    }
 
 
                 }
