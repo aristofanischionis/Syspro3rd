@@ -17,7 +17,6 @@ pthread_cond_t condBuffer;
 // pthread_mutex_t mutexBuffer;
 pthread_mutex_t mutexList;
 
-buffer_entry *Buffer;
 // parse command line args
 void paramChecker(int n, char *argv[], char *toCheck, char **result)
 {
