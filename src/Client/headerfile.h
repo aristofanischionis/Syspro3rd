@@ -8,6 +8,11 @@ void *Mainthread(void *args);
 void sendLogOn(struct sockaddr_in client_addr, int server);
 void sendGetClients(int server);
 void sendLogOff(char *IP, int port, int server);
+void tokenizeClientList(char *input);
+char *strremove(char *str, const char *sub);
+void deleteFromList(char *input);
+void insertInClientList(char *input);
+char *calculateMD5hash(char *pathname);
 void terminating();
 
 struct args_MainThread
@@ -24,7 +29,7 @@ struct args_Workers
 typedef struct buffer_entry
 {
     char pathname[128];
-    char version[64];
+    char version[33]; // 32 hex bytes + \0 , it is the md5 hash of the file
     char IPaddress[20];
     int portNum;
 } buffer_entry;

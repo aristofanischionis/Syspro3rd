@@ -64,7 +64,7 @@ int logOn(Node **headList, char *buffer, int sd, int max_clients, int **client_s
     // printf("The list currently consists of: \n");
     // printList(*headList);
     // now I have to send to all users in the list a message USER_ON
-    sprintf(message, "USER_ON < %s , %d >\n", IP, port);
+    sprintf(message, "USER_ON < %s , %d >", IP, port);
     printf("My message is : %s", message);
 
     // send it to all others
@@ -106,7 +106,7 @@ void logOff(Node **headList, char* buffer, int sd, int max_clients, int client_s
     {
         fprintf(stderr, "ERROR_IP_PORT_NOT_FOUND_IN_LIST\n");
     }
-    sprintf(message, "USER_OFF < %s , %d >\n", IP, port);
+    sprintf(message, "USER_OFF < %s , %d >", IP, port);
     printf("My message is : %s\n", message);
     for (i = 0; i < max_clients; i++)
     {

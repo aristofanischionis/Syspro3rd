@@ -12,16 +12,20 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <sys/wait.h>
+#include <dirent.h>
+#include <fcntl.h>
 
 #include "headerfile.h"
 #include "../HeaderFiles/Common.h"
+#include "../HeaderFiles/LinkedList.h"
 
-extern pthread_cond_t condBuffer;
-// extern pthread_mutex_t mutexBuffer;
-extern pthread_mutex_t mutexList;
-extern buffer_entry* Buffer;
+pthread_mutex_t mutexList;
+
+buffer_entry *Buffer;
 char *clientIP;
 int port, server;
+Node *ClientsListHead;
 
 /*  Print  error  message  and  exit  */
 void perror_exit(char *message)
@@ -38,17 +42,18 @@ void terminating()
     exit(0);
 }
 
-void *threadsWork(void *args) 
+void *threadsWork(void *args)
 {
     struct args_Workers *arguments;
     arguments = (struct args_MainThread *)args;
-
 }
 
 void *Mainthread(void *args)
 {
     // Two buffer are for message communication
+    pthread_mutex_init(&mutexList, NULL);
     struct args_MainThread *arguments;
+    ClientsListHead = NULL;
     // char *clientIP;
     clientIP = malloc(20);
     strcpy(clientIP, "127.0.0.1");
@@ -214,37 +219,31 @@ void *Mainthread(void *args)
                     // send(sd, buffer, strlen(buffer), 0);
                     if (!strcmp(receivedMes, "GET_FILE_LIST"))
                     {
-                        
                     }
                     else if (strstr(receivedMes, "GET_FILE") != NULL)
                     {
                     }
-                    else if (!strcmp(receivedMes, "USER_OFF"))
+                    else if (strstr(receivedMes, "USER_OFF") != NULL)
                     {
-                        // pthread_mutex_lock(&mutex);
-                        // delete from list
-                        // pthread_mutex_unlock(&mutex);
+                        printf("received user off.. %s\n", receivedMes);
+                        deleteFromList(receivedMes);
                     }
                     // possible responses from Server
                     else if (strstr(receivedMes, "CLIENT_LIST") != NULL)
                     {
-                        // pthread_mutex_lock(&mutex);
-                        // tokenisation
-                        // insert in list
-                        // pthread_mutex_unlock(&mutex);
-                        printf("I got a client list ------> //// %s \n", receivedMes);
+                        // tokenize it and push it in to list with mutexes
+                        printf("received client list.. %s\n", receivedMes);
+                        tokenizeClientList(receivedMes);
                     }
                     else if (!strcmp(receivedMes, "WELCOME"))
                     {
-                        printf("I am in welcome read!!!!!!!!!!!!!\n");
-                        // sleep(10);
+                        printf("sending get clients..\n");
                         sendGetClients(server);
                     }
                     else if (strstr(receivedMes, "USER_ON") != NULL)
                     {
-                        // pthread_mutex_lock(&mutex);
-                        // insert in list
-                        // pthread_mutex_unlock(&mutex);
+                        printf("I received info, user on %s\n", receivedMes);
+                        insertInClientList(receivedMes);
                     }
                     else
                     {
@@ -294,4 +293,142 @@ void sendLogOff(char *IP, int port, int server)
     send(server, message, strlen(message), 0);
     free(message);
     close(server);
+}
+
+char *strremove(char *str, const char *sub)
+{
+    size_t len = strlen(sub);
+    if (len > 0)
+    {
+        char *p = str;
+        while ((p = strstr(p, sub)) != NULL)
+        {
+            memmove(p, p + len, strlen(p + len) + 1);
+        }
+    }
+    return str;
+}
+
+// input str should be like this:
+// "CLIENT_LIST 3 < 123.23.2.2 , 20 > < 113.13.1.1 , 10 > < 111.23.2.2 , 15 > "
+void tokenizeClientList(char *input)
+{
+    char *clientListStr;
+    char *IP;
+    char *tobeRemov;
+    int port = 0;
+    int clientsNum = 0;
+    clientListStr = malloc(strlen(input) + 1);
+    tobeRemov = malloc(50);
+    IP = malloc(20);
+    strcpy(clientListStr, input);
+    sscanf(clientListStr, "CLIENT_LIST %d", &clientsNum);
+    if (clientsNum == 0)
+    {
+        printf("I am the only client \n");
+        return;
+    }
+    sprintf(tobeRemov, "CLIENT_LIST %d ", clientsNum);
+    clientListStr = strremove(clientListStr, tobeRemov);
+    for (int i = 0; i < clientsNum; i++)
+    {
+        // ClientsListHead
+        sscanf(clientListStr, "< %s , %d > ", IP, &port);
+        // printf("-----> Ip |%s| port %d \n", IP, port);
+        // push it in the client list
+        // but firstly lock mutex
+        pthread_mutex_lock(&mutexList);
+        push(&ClientsListHead, IP, port);
+        pthread_mutex_unlock(&mutexList);
+        sprintf(tobeRemov, "< %s , %d > ", IP, port);
+        clientListStr = strremove(clientListStr, tobeRemov);
+    }
+
+    free(clientListStr);
+    free(tobeRemov);
+    free(IP);
+}
+
+void deleteFromList(char *input)
+{
+    char *IP;
+    int port = 0;
+    IP = malloc(20);
+
+    sscanf(input, "USER_OFF < %s , %d >", IP, &port);
+
+    pthread_mutex_lock(&mutexList);
+    deleteNode(&ClientsListHead, IP, port);
+    pthread_mutex_unlock(&mutexList);
+
+    free(IP);
+}
+
+void insertInClientList(char *input)
+{
+    char *IP;
+    int port = 0;
+    IP = malloc(20);
+
+    sscanf(input, "USER_ON < %s , %d >", IP, &port);
+
+    pthread_mutex_lock(&mutexList);
+    push(&ClientsListHead, IP, port);
+    pthread_mutex_unlock(&mutexList);
+
+    free(IP);
+}
+
+void sendFileList(char *dirName)
+{
+}
+
+void sendFile()
+{
+}
+
+char *calculateMD5hash(char *pathname)
+{
+    char *result;
+    char *fileWithHash;
+    char *temp;
+    pid_t pid;
+    FILE *fp;
+    result = malloc(33);
+    temp = malloc(strlen(pathname) + 1);
+    fileWithHash = malloc(strlen(pathname) + 3);
+    strcpy(result, "");
+    // call the script to make the file with the hash then read it from there
+    pid = fork();
+    if (pid == -1)
+    {
+        perror("fork in calculate md5 hash: ");
+        exit(EXIT_FAILURE);
+    }
+    else if (pid == 0)
+    {
+        char *argvList[] = {"./MD5hash.sh", pathname, NULL};
+        execv("./MD5hash.sh", argvList);
+        exit(EXIT_FAILURE);
+    }
+    wait(NULL);
+    // now that the file is ready with the checksum
+    // open the file and extract the hash
+
+    sprintf(fileWithHash, "%s.md", pathname);
+
+    fp = fopen(fileWithHash, "r");
+    if (fp == NULL)
+    {
+        perror("fopen()");
+        exit(EXIT_FAILURE);
+    }
+
+    fscanf(fp, "MD5 (%s) = %s", temp, result);
+
+    fclose(fp);
+    remove(fileWithHash);
+    free(temp);
+    free(fileWithHash);
+    return result;
 }

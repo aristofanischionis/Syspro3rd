@@ -11,11 +11,11 @@
 #include <ctype.h>
 #include <pthread.h>
 #include "headerfile.h"
+#include "../HeaderFiles/LinkedList.h"
 #define MAX_PATH 200
 
-pthread_cond_t condBuffer;
+// pthread_cond_t condBuffer;
 // pthread_mutex_t mutexBuffer;
-pthread_mutex_t mutexList;
 
 // parse command line args
 void paramChecker(int n, char *argv[], char *toCheck, char **result)
@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
     // make the appropriate convertions
     port = atoi(portNum);
     threadsNum = atoi(workerThreads);
+    threadsNum++;
     bSize = atoi(bufferSize);
     serverPort = atoi(serverPortStr);
     // freeing up useless memory
@@ -78,9 +79,9 @@ int main(int argc, char *argv[])
     free(bufferSize);
     free(serverPortStr);
     //
-    pthread_cond_init(&condBuffer, NULL);
+    // pthread_cond_init(&condBuffer, NULL);
     // pthread_mutex_init(&mutexBuffer, NULL);
-    pthread_mutex_init(&mutexList, NULL);
+    // pthread_mutex_init(&mutexList, NULL);
     //
     // Buffer = malloc(bSize * sizeof(buffer_entry));
 
