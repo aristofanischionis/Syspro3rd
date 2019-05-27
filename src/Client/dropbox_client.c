@@ -83,7 +83,6 @@ int main(int argc, char *argv[])
     // pthread_mutex_init(&mutexBuffer, NULL);
     // pthread_mutex_init(&mutexList, NULL);
     //
-
     // start
     threads = malloc(threadsNum * sizeof(pthread_t));
     arguments.clientPort = port;

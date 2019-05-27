@@ -229,7 +229,6 @@ void *Mainthread(void *args)
                     }
                     else if (strstr(receivedMes, "GET_FILE") != NULL)
                     {
-
                     }
                     else if (strstr(receivedMes, "USER_OFF") != NULL)
                     {
