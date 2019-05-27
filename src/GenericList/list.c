@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../HeaderFiles/LinkedList.h"
-
+#include "../HeaderFiles/Common.h"
 // printing List
 void printList(Node *n)
 {
@@ -116,7 +116,6 @@ int exists(Node **head_ref, char *IP, int port)
 
 void appendString(char **new_str, char *str1, char *str2)
 {
-
     *new_str[0] = '\0'; // ensures the memory is an empty string
     strcat(*new_str, str1);
     strcat(*new_str, str2);

@@ -51,3 +51,10 @@ int setup_signals()
   
   return 0;
 }
+
+// void appendString(char **new_str, char *str1, char *str2)
+// {
+//     *new_str[0] = '\0'; // ensures the memory is an empty string
+//     strcat(*new_str, str1);
+//     strcat(*new_str, str2);
+// }

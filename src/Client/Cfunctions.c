@@ -22,7 +22,7 @@
 
 pthread_mutex_t mutexList;
 
-buffer_entry *Buffer;
+Buffer *myBuffer;
 char *clientIP;
 int port, server;
 Node *ClientsListHead;
@@ -45,7 +45,9 @@ void terminating()
 void *threadsWork(void *args)
 {
     struct args_Workers *arguments;
-    arguments = (struct args_MainThread *)args;
+    arguments = (struct args_Workers *)args;
+
+    return NULL;
 }
 
 void *Mainthread(void *args)
@@ -219,6 +221,12 @@ void *Mainthread(void *args)
                     // send(sd, buffer, strlen(buffer), 0);
                     if (!strcmp(receivedMes, "GET_FILE_LIST"))
                     {
+                        printf("received get file list ... \n");
+                        char* dir;
+                        dir = malloc(512);
+                        strcpy(dir, arguments->dirName);
+                        sendFileList(dir);
+                        free(dir);
                     }
                     else if (strstr(receivedMes, "GET_FILE") != NULL)
                     {
@@ -379,13 +387,156 @@ void insertInClientList(char *input)
     free(IP);
 }
 
+void findFiles(char *source, int indent, char **result, int *NumOfFiles)
+{
+    DIR *dir;
+    struct dirent *entry;
+    char path[1025];
+    struct stat info;
+    char *temp;
+    temp = malloc(60);
+    printf("------------------> %s \n", source);
+    if ((dir = opendir(source)) == NULL)
+        perror("opendir() error");
+    else
+    {
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (entry->d_name[0] != '.')
+            {
+                strcpy(path, source);
+                strcat(path, "/");
+                strcat(path, entry->d_name);
+                if (stat(path, &info) != 0)
+                {
+                    fprintf(stderr, "stat() error on %s: %s\n", path, strerror(errno));
+                }
+                else if (S_ISDIR(info.st_mode))
+                {
+                    // it is a directory
+                    findFiles(path, indent + 1, result, NumOfFiles);
+                }
+                else if(S_ISREG(info.st_mode))
+                {
+                    // it is a file
+                    (*NumOfFiles) = (*NumOfFiles) + 1;
+                    char *version, *str1, *str2;
+                    str1 = malloc(BUFSIZ);
+                    str2 = malloc(60);
+                    version = malloc(33);
+                    strcpy(version, calculateMD5hash(path));
+                    sprintf(temp, "< %s , %s > ", path, version);
+                    strcpy(str1, *result);
+                    strcpy(str2, temp);
+                    appendString(result, str1, str2);
+                    free(version);
+                    free(str1);
+                    free(str2);
+                }
+            }
+        }
+        closedir(dir);
+    }
+}
+
+// void appendString(char **new_str, char *str1, char *str2)
+// {
+//     *new_str[0] = '\0'; // ensures the memory is an empty string
+//     strcat(*new_str, str1);
+//     strcat(*new_str, str2);
+// }
+
 void sendFileList(char *dirName)
 {
+    int numOfFiles = 0;
+    char *result, *temp;
+    char *str1, *str2;
+    str1 = malloc(BUFSIZ);
+    str2 = malloc(BUFSIZ);
+    result = malloc(BUFSIZ);
+    temp = malloc(BUFSIZ);
+    findFiles(dirName, 0, &temp, &numOfFiles);
+    // now I should have the num of files and the string with all the files in temp
+    printf("string with files %s, files are : %d \n", temp, numOfFiles);
+    sprintf(str1, "FILE_LIST %d ", numOfFiles);
+    strcpy(str2, temp);
+    appendString(&result, str1, str2);
+
+    printf("final result-----------> %s \n", result);
+    free(str1);
+    free(str2);
+    free(temp);
+    free(result);
 }
 
 void sendFile()
 {
 }
+
+void makeFolder(char* foldername){
+    if(foldername && !foldername[0]){
+        printf("foldername is empty \n");
+        return;
+    }
+    // printf("Folder to be made %s\n", foldername);
+    // make any subdirectories first using mkdir -p
+    pid_t pid;
+    pid = fork();
+    if (pid == 0) {
+        execl("/bin/mkdir", "mkdir", "-p", foldername, NULL);
+    } 
+    else if(pid < 0) {
+        perror("pid<0 in mkdir\n");
+        exit(1);
+    }
+
+    wait(NULL);
+}
+
+int makeFile(char* filename){
+    // find path and file
+    char copy[300];
+    char file[50];
+    char tmp[300];
+    char path[250];
+    strcpy(path, "");
+    strcpy(copy, filename);
+    const char s[2] = "/";
+    char *token;
+    token = strtok(copy, s);
+
+    while( token != NULL ) {
+        strcpy(tmp, token);
+        token = strtok(NULL, s);
+        if(token == NULL){
+            // just found the file
+            strcpy(file, tmp);
+        }
+        else {
+            sprintf(path, "%s/%s", path, tmp);
+        }
+    }
+    if (path[0] == '/'){
+        memmove(path, path+1, strlen(path));
+    }
+    
+    // make any subdirectories first using mkdir -p
+    pid_t pid;    
+    // makeFolder(path); 
+    
+    // then use touch
+    pid = fork();
+    if (pid == 0) {
+        execl("/bin/touch", "touch", filename, NULL);
+    } else if (pid < 0) {
+        perror("pid<0 in touch\n");
+        exit(1);
+    }
+    wait(NULL);
+    
+    return 0;
+}
+
 
 char *calculateMD5hash(char *pathname)
 {
@@ -399,6 +550,7 @@ char *calculateMD5hash(char *pathname)
     fileWithHash = malloc(strlen(pathname) + 3);
     strcpy(result, "");
     // call the script to make the file with the hash then read it from there
+    sprintf(fileWithHash, "%s.md5", pathname);
     pid = fork();
     if (pid == -1)
     {
@@ -407,6 +559,10 @@ char *calculateMD5hash(char *pathname)
     }
     else if (pid == 0)
     {
+        printf("-----------> %s \n", fileWithHash);
+        // makeFile(fileWithHash);
+        fp = fopen(fileWithHash, "w");
+        fclose(fp);
         char *argvList[] = {"./MD5hash.sh", pathname, NULL};
         execv("./MD5hash.sh", argvList);
         exit(EXIT_FAILURE);
@@ -415,8 +571,7 @@ char *calculateMD5hash(char *pathname)
     // now that the file is ready with the checksum
     // open the file and extract the hash
 
-    sprintf(fileWithHash, "%s.md", pathname);
-
+    // printf("-----------> fileWithHash %s\n", fileWithHash);
     fp = fopen(fileWithHash, "r");
     if (fp == NULL)
     {
@@ -427,7 +582,7 @@ char *calculateMD5hash(char *pathname)
     fscanf(fp, "MD5 (%s) = %s", temp, result);
 
     fclose(fp);
-    remove(fileWithHash);
+    // remove(fileWithHash);
     free(temp);
     free(fileWithHash);
     return result;

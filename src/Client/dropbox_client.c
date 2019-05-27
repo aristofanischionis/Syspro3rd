@@ -84,18 +84,25 @@ int main(int argc, char *argv[])
     // pthread_mutex_init(&mutexList, NULL);
     //
     // Buffer = malloc(bSize * sizeof(buffer_entry));
+    strcpy(arguments.dirName, dirName);
+    char* dir;
+    dir = malloc(512);
+    strcpy(dir, arguments.dirName);
+    sendFileList(dir);
+    free(dir);
 
+    printf("finished sendfile list");
+    sleep(100);
     // start
     threads = malloc(threadsNum * sizeof(pthread_t));
     arguments.clientPort = port;
     arguments.serverPort = serverPort;
-
+    strcpy(arguments.dirName, dirName);
     strcpy(arguments.serverIP, serverIP);
     printf("before thread\n");
     pthread_create(&threads[0], NULL, Mainthread, &arguments);
 
-    //
-
+    //    
     for(int i = 1 ; i<threadsNum ;i ++){
         pthread_create(&threads[i], NULL, threadsWork, &argumentsWorkers);
 

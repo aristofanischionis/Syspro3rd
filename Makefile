@@ -12,8 +12,8 @@ all: $(OUT)
 dropbox_server : dropbox_server.o Sfunctions.o list.o
 	$(CC) -g dropbox_server.o Sfunctions.o list.o -o dropbox_server
 
-dropbox_client : dropbox_client.o Cfunctions.o Buffer.o
-	$(CC) -g  dropbox_client.o Cfunctions.o Buffer.o -l pthread -o dropbox_client
+dropbox_client : dropbox_client.o Cfunctions.o Buffer.o list.o
+	$(CC) -g  dropbox_client.o Cfunctions.o Buffer.o list.o -l pthread -o dropbox_client
 
 # create/compile the individual files >>separately<< 
 

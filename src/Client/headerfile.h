@@ -13,6 +13,8 @@ char *strremove(char *str, const char *sub);
 void deleteFromList(char *input);
 void insertInClientList(char *input);
 char *calculateMD5hash(char *pathname);
+void findFiles(char *source, int indent, char **result, int *NumOfFiles);
+void sendFileList(char *dirName);
 void terminating();
 
 struct args_MainThread
@@ -20,6 +22,7 @@ struct args_MainThread
     char serverIP[25];
     int serverPort;
     int clientPort;
+    char dirName[512];
 };
 
 struct args_Workers
