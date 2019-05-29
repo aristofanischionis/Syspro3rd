@@ -570,7 +570,7 @@ void sendFileContents(char *pathName, int socketSD, char *version)
     long long size;
     size_t bytesRead = 0;
     char *result;
-    result = malloc(BUFSIZ);
+    result = malloc(BUFSIZ + 1);
     strcpy(result, "");
     // open file
     fp = fopen(pathName, "r");
@@ -583,7 +583,7 @@ void sendFileContents(char *pathName, int socketSD, char *version)
     size = countSize(pathName);
     //
     sprintf(result, "FILE_SIZE %s %d ", version, size);
-    send(socketSD, result, strlen(result) + 1, 0);
+    send(socketSD, result, strlen(result), 0);
 
     // read BUFSIZ and send and then again till it is done
     strcpy(result, "");
@@ -591,7 +591,7 @@ void sendFileContents(char *pathName, int socketSD, char *version)
     // read the first chunk
     while (bytesRead > 0)
     {
-        send(socketSD, result, strlen(result) + 1, 0);
+        send(socketSD, result, strlen(result), 0);
 
         strcpy(result, "");
         bytesRead = fread(result, BUFSIZ, 1, fp);
@@ -639,7 +639,8 @@ char *calculateMD5hash(char *pathname)
     return result;
 }
 
-void readFileList(char* source, char* IPsender, int portSender){
+void readFileList(char *source, char *IPsender, int portSender)
+{
     char *sourceStr;
     char *tobeRemov;
     char *pathName;
@@ -682,6 +683,40 @@ void readFileList(char* source, char* IPsender, int portSender){
     free(pathName);
 }
 
-void readFile(){
+void readFile(char *source, int socketSD, char* fullPath)
+{
+    FILE *fp;
+    char *sourceStr;
+    char *tobeRemov;
+    char *chunk;
+    char *version;
+    int bytes = 0;
+    int times = 0;
+    sourceStr = malloc(strlen(source) + 1);
+    tobeRemov = malloc(50);
+    version = malloc(33);
+    chunk = malloc(BUFSIZ + 1);
+    strcpy(sourceStr, source);
+    sscanf(sourceStr, "FILE_SIZE %s %d ", version, &bytes);
+    times = bytes / BUFSIZ + 1;
+    fp = fopen(fullPath, "w");
+    if(fp == NULL){
+        fprintf(stderr, "error in opening file readfile\n");
+        exit(EXIT_FAILURE);
+    }
 
+    for (int i = 0; i < times; i++)
+    {
+        strcpy(chunk, "");
+        recv(socketSD, chunk, BUFSIZ, 0);
+        // so now I have part of the file's 
+        fwrite(chunk , 1 , sizeof(chunk) , fp);
+    }
+
+    fclose(fp);
+    close(socketSD);
+    free(sourceStr);
+    free(tobeRemov);
+    free(version);
+    free(chunk);
 }

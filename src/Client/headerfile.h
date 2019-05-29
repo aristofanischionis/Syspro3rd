@@ -18,6 +18,8 @@ void sendFileList(char *dirName, int clientSocket);
 void sendFileContents(char *pathName, int socketSD, char* version);
 void putRequestsInBuffer();
 void sendFile(char *dirName, char *pathName, char *version, int socketSD);
+void readFileList(char *source, char *IPsender, int portSender);
+void readFile(char *source, int socketSD, char *fullPath);
 long long countSize(char *filename);
 void terminating();
 
