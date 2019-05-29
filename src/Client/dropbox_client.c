@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
     //
     // start
     threads = malloc(threadsNum * sizeof(pthread_t));
+    arguments.bufSize = bSize;
     arguments.clientPort = port;
     arguments.serverPort = serverPort;
     strcpy(arguments.dirName, dirName);
@@ -95,7 +96,6 @@ int main(int argc, char *argv[])
     //    
     for(int i = 1 ; i<threadsNum ;i ++){
         pthread_create(&threads[i], NULL, threadsWork, &argumentsWorkers);
-
     }
     //
     for(int i = 0 ; i<threadsNum ;i ++){

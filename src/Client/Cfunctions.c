@@ -81,6 +81,8 @@ void *Mainthread(void *args)
     a.sa_flags = 0;
     sigemptyset(&a.sa_mask);
     sigaction(SIGINT, &a, NULL);
+    // initialize buffer
+    init(arguments->bufSize);
     // ----------------> establish client socket
     printf("clientip %s, clientport %d,  serverip %s, serverport %d \n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
 
@@ -221,7 +223,7 @@ void *Mainthread(void *args)
                     if (!strcmp(receivedMes, "GET_FILE_LIST"))
                     {
                         printf("received get file list ... \n");
-                        char* dir;
+                        char *dir;
                         dir = malloc(512);
                         strcpy(dir, arguments->dirName);
                         sendFileList(dir, sd);
@@ -229,18 +231,34 @@ void *Mainthread(void *args)
                     }
                     else if (strstr(receivedMes, "GET_FILE") != NULL)
                     {
+                        printf("received get file ... \n");
+                        char *dir;
+                        char *version;
+                        char *path;
+                        dir = malloc(512);
+                        version = malloc(33);
+                        path = malloc(BUFSIZ);
+                        strcpy(dir, arguments->dirName);
+                        // get the filename and version
+                        sscanf(receivedMes, "GET_FILE < %s , %s >", path, version);
+                        sendFile(dir, path, version, sd);
+                        free(dir);
+                        free(path);
+                        free(version);
                     }
                     else if (strstr(receivedMes, "USER_OFF") != NULL)
                     {
                         printf("received user off.. %s\n", receivedMes);
                         deleteFromList(receivedMes);
                     }
-                    // possible responses from Server
                     else if (strstr(receivedMes, "CLIENT_LIST") != NULL)
                     {
                         // tokenize it and push it in to list with mutexes
                         printf("received client list.. %s\n", receivedMes);
                         tokenizeClientList(receivedMes);
+                        // now I have all of the clients in my list
+                        // put the requests in the buffer for all the entries in my list
+                        putRequestsInBuffer();
                     }
                     else if (!strcmp(receivedMes, "WELCOME"))
                     {
@@ -251,6 +269,20 @@ void *Mainthread(void *args)
                     {
                         printf("I received info, user on %s\n", receivedMes);
                         insertInClientList(receivedMes);
+                    }
+                    else if (strstr(receivedMes, "FILE_LIST") != NULL)
+                    {
+                    }
+                    else if (strstr(receivedMes, "FILE_SIZE") != NULL)
+                    {
+                    }
+                    else if (!strcmp(receivedMes, "FILE_UP_TO_DATE"))
+                    {
+                        printf("I received %s\n", receivedMes);
+                    }
+                    else if (!strcmp(receivedMes, "FILE_NOT_FOUND"))
+                    {
+                        printf("I received %s\n", receivedMes);
                     }
                     else
                     {
@@ -356,6 +388,23 @@ void tokenizeClientList(char *input)
     free(IP);
 }
 
+void putRequestsInBuffer()
+{
+    // I will extract info from list and place it in buffer entries to put it in buffer
+    buffer_entry temp;
+    Node *node = ClientsListHead;
+    while (node != NULL)
+    {
+        strcpy(temp.IPaddress, node->IP);
+        temp.portNum = node->port;
+        strcpy(temp.pathname, "-1");
+        strcpy(temp.version, "-1");
+        // temp is the ready request so put it in buffer
+        put(temp);
+        node = node->next;
+    }
+}
+
 void deleteFromList(char *input)
 {
     char *IP;
@@ -373,6 +422,7 @@ void deleteFromList(char *input)
 
 void insertInClientList(char *input)
 {
+    buffer_entry temp;
     char *IP;
     int port = 0;
     IP = malloc(20);
@@ -382,6 +432,13 @@ void insertInClientList(char *input)
     pthread_mutex_lock(&mutexList);
     push(&ClientsListHead, IP, port);
     pthread_mutex_unlock(&mutexList);
+    // put the request in the circular buffer as well
+    strcpy(temp.IPaddress, IP);
+    temp.portNum = port;
+    strcpy(temp.pathname, "-1");
+    strcpy(temp.version, "-1");
+    // temp is the ready request so put it in buffer
+    put(temp);
 
     free(IP);
 }
@@ -414,7 +471,7 @@ void findFiles(char *source, int indent, char **result, int *NumOfFiles)
                     // it is a directory
                     findFiles(path, indent + 1, result, NumOfFiles);
                 }
-                else if(S_ISREG(info.st_mode))
+                else if (S_ISREG(info.st_mode))
                 {
                     // it is a file
                     (*NumOfFiles) = (*NumOfFiles) + 1;
@@ -436,7 +493,6 @@ void findFiles(char *source, int indent, char **result, int *NumOfFiles)
         closedir(dir);
     }
 }
-
 
 void sendFileList(char *dirName, int clientSocket)
 {
@@ -463,17 +519,94 @@ void sendFileList(char *dirName, int clientSocket)
     free(result);
 }
 
-void sendFile()
+void sendFile(char *dirName, char *pathName, char *version, int socketSD)
 {
+    char *versionNow, *fullPath;
+    versionNow = malloc(33);
+    fullPath = malloc(BUFSIZ);
+    struct stat info;
+    appendString(fullPath, dirName, pathName);
+    if (stat(fullPath, &info) != 0)
+    {
+        // there is not a file
+        send(socketSD, "FILE_NOT_FOUND", 16, 0);
+        return;
+    }
+    else if (!S_ISREG(info.st_mode))
+    {
+        fprintf(stderr, "Unknown case\n");
+        return;
+    }
+    // there is a file
+    strcpy(versionNow, calculateMD5hash(fullPath));
+    if (!strcmp(versionNow, version))
+    {
+        // same version
+        send(socketSD, "FILE_UP_TO_DATE", 17, 0);
+        return;
+    }
+    // different one
+    // so send all of its contents in chuncks of BUFSIZ
+    sendFileContents(fullPath, socketSD, versionNow);
 }
 
+long long countSize(char *filename)
+{
+    struct stat sb;
+    if (stat(filename, &sb) == -1)
+    {
+        perror("stat");
+    }
+    else
+    {
+        printf("File size: %lld bytes\n", (long long)sb.st_size);
+        return ((long long)sb.st_size);
+    }
+}
+
+void sendFileContents(char *pathName, int socketSD, char *version)
+{
+    FILE *fp;
+    long long size;
+    size_t bytesRead = 0;
+    char *result;
+    result = malloc(BUFSIZ);
+    strcpy(result, "");
+    // open file
+    fp = fopen(pathName, "r");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "error in getFileContents\n");
+        exit(0);
+    }
+    // count size
+    size = countSize(pathName);
+    //
+    sprintf(result, "FILE_SIZE %s %d ", version, size);
+    send(socketSD, result, strlen(result) + 1, 0);
+
+    // read BUFSIZ and send and then again till it is done
+    strcpy(result, "");
+    bytesRead = fread(result, BUFSIZ, 1, fp);
+    // read the first chunk
+    while (bytesRead > 0)
+    {
+        send(socketSD, result, strlen(result) + 1, 0);
+
+        strcpy(result, "");
+        bytesRead = fread(result, BUFSIZ, 1, fp);
+    }
+
+    close(socketSD);
+    fclose(fp);
+}
 
 char *calculateMD5hash(char *pathname)
 {
     char *result;
     char *fileWithHash;
     char *temp;
-    char* command;
+    char *command;
     FILE *fp;
     result = malloc(33);
     temp = malloc(strlen(pathname) + 1);
@@ -481,7 +614,7 @@ char *calculateMD5hash(char *pathname)
     strcpy(result, "");
     // call the script to make the file with the hash then read it from there
     sprintf(fileWithHash, "%s.md5", pathname);
-    
+
     command = malloc(1025);
     sprintf(command, "md5sum %s > %s", pathname, fileWithHash);
     system(command);
@@ -504,4 +637,51 @@ char *calculateMD5hash(char *pathname)
     free(temp);
     free(fileWithHash);
     return result;
+}
+
+void readFileList(char* source, char* IPsender, int portSender){
+    char *sourceStr;
+    char *tobeRemov;
+    char *pathName;
+    char *version;
+    int numOfFiles = 0;
+    sourceStr = malloc(strlen(source) + 1);
+    tobeRemov = malloc(50);
+    pathName = malloc(BUFSIZ);
+    version = malloc(33);
+    strcpy(sourceStr, source);
+    sscanf(sourceStr, "FILE_LIST %d ", &numOfFiles);
+
+    if (numOfFiles == 0)
+    {
+        printf("This client has no files \n");
+        return;
+    }
+    sprintf(tobeRemov, "FILE_LIST %d ", numOfFiles);
+    sourceStr = strremove(sourceStr, tobeRemov);
+    for (int i = 0; i < numOfFiles; i++)
+    {
+        buffer_entry temp;
+        sscanf(sourceStr, "< %s , %s > ", pathName, version);
+        // now I have extracted the required info
+        // just place it in the buffer
+        strcpy(temp.IPaddress, IPsender);
+        strcpy(temp.pathname, pathName);
+        strcpy(temp.version, version);
+        temp.portNum = portSender;
+
+        put(temp);
+
+        sprintf(tobeRemov, "< %s , %s > ", pathName, version);
+        sourceStr = strremove(sourceStr, tobeRemov);
+    }
+
+    free(sourceStr);
+    free(tobeRemov);
+    free(version);
+    free(pathName);
+}
+
+void readFile(){
+
 }

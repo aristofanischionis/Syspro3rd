@@ -15,6 +15,10 @@ void insertInClientList(char *input);
 char *calculateMD5hash(char *pathname);
 void findFiles(char *source, int indent, char **result, int *NumOfFiles);
 void sendFileList(char *dirName, int clientSocket);
+void sendFileContents(char *pathName, int socketSD, char* version);
+void putRequestsInBuffer();
+void sendFile(char *dirName, char *pathName, char *version, int socketSD);
+long long countSize(char *filename);
 void terminating();
 
 struct args_MainThread
@@ -23,6 +27,7 @@ struct args_MainThread
     int serverPort;
     int clientPort;
     char dirName[512];
+    int bufSize;
 };
 
 struct args_Workers
