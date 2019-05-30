@@ -29,13 +29,6 @@ char *clientIP;
 int port, server;
 Node *ClientsListHead;
 
-/*  Print  error  message  and  exit  */
-void perror_exit(char *message)
-{
-    perror(message);
-    exit(EXIT_FAILURE);
-}
-
 void terminating()
 {
     printf("terminating-------------->\n");
@@ -52,7 +45,7 @@ void *threadsWork(void *args)
     arguments = (struct args_Workers *)args;
     buffer_entry temp;
     int sock = 0;
-    struct sockaddr_in client_addr;
+    // struct sockaddr_in client_addr;
     char *buffer;
     char *request = malloc(BUFSIZ);
     buffer = malloc(BUFSIZ);
@@ -60,22 +53,24 @@ void *threadsWork(void *args)
     {
         temp = retrieve();
         pthread_cond_signal(&cond_nonfull);
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        {
-            printf("\n Socket creation error \n");
-            pthread_exit(0);
-        }
+        // if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        // {
+        //     printf("\n Socket creation error \n");
+        //     pthread_exit(0);
+        // }
 
-        memset(&client_addr, '0', sizeof(client_addr));
-        client_addr.sin_family = AF_INET;
-        client_addr.sin_addr.s_addr = inet_addr(temp.IPaddress);
-        client_addr.sin_port = htons(temp.portNum);
+        // memset(&client_addr, '0', sizeof(client_addr));
 
-        if (connect(sock, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0)
-        {
-            printf("\nConnection Failed \n");
-            pthread_exit(0);
-        }
+        // client_addr.sin_family = AF_INET;
+        // client_addr.sin_addr.s_addr = inet_addr(temp.IPaddress);
+        // client_addr.sin_port = htons(temp.portNum);
+
+        // if (connect(sock, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0)
+        // {
+        //     printf("\nConnection Failed \n");
+        //     pthread_exit(0);
+        // }
+        sock = connect_to_socket(temp.IPaddress, temp.portNum);
         // begin doing things
         if (!strcmp(temp.pathname, "-1"))
         {
@@ -120,8 +115,10 @@ void *threadsWork(void *args)
                 if (!strcmp(buffer, "FILE_UP_TO_DATE"))
                 {
                     //file up to date don't do anything
+                    printf("File is up to date \n");
                 }
-                else{
+                else
+                {
                     // not up to date
                     printf("File not up to date");
                     // 001 means file exists but not up to date
@@ -160,15 +157,16 @@ void *threadsWork(void *args)
     pthread_exit(0);
 }
 
+
+// I now need to put the new select method in here and replace the one that exists now
+// https://www.gnu.org/software/libc/manual/html_node/Server-Example.html?fbclid=IwAR1PHqrG94YX21XfsHb_77PDzgNFAr4inv-COyXCo5CcJEQZRi5MkAmFFfU
+// ---------------->
 void *Mainthread(void *args)
 {
-    // Two buffer are for message communication
     pthread_mutex_init(&mutexList, NULL);
     struct args_MainThread *arguments;
     ClientsListHead = NULL;
-    // char *clientIP;
-    clientIP = malloc(20);
-    // strcpy(clientIP, "127.0.0.1");
+    clientIP = malloc(25);
     arguments = (struct args_MainThread *)args;
     char *receivedMes;
     receivedMes = malloc(BUFSIZ + 1);
@@ -446,19 +444,19 @@ void sendLogOff(char *IP, int port, int server)
     close(server);
 }
 
-char *strremove(char *str, const char *sub)
-{
-    size_t len = strlen(sub);
-    if (len > 0)
-    {
-        char *p = str;
-        while ((p = strstr(p, sub)) != NULL)
-        {
-            memmove(p, p + len, strlen(p + len) + 1);
-        }
-    }
-    return str;
-}
+// char *strremove(char *str, const char *sub)
+// {
+//     size_t len = strlen(sub);
+//     if (len > 0)
+//     {
+//         char *p = str;
+//         while ((p = strstr(p, sub)) != NULL)
+//         {
+//             memmove(p, p + len, strlen(p + len) + 1);
+//         }
+//     }
+//     return str;
+// }
 
 // input str should be like this:
 // "CLIENT_LIST 3 < 123.23.2.2 , 20 > < 113.13.1.1 , 10 > < 111.23.2.2 , 15 > "

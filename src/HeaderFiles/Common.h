@@ -13,5 +13,6 @@ void checkHostEntry(struct hostent *hostentry);
 void checkIPbuffer(char *IPbuffer);
 int make_socket(char *myIP, int port);
 int connect_to_socket(char *myIP, int port);
+char *strremove(char *str, const char *sub);
 
 #endif

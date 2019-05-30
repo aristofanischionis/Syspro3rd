@@ -12,11 +12,10 @@
 #include <pthread.h>
 #include <arpa/inet.h> 
 #include "headerfile.h"
-#include "../HeaderFiles/LinkedList.h"
-#define MAX_PATH 200
+// #include "../HeaderFiles/LinkedList.h"
+#include "../HeaderFiles/Common.h"
 
-// pthread_cond_t condBuffer;
-// pthread_mutex_t mutexBuffer;
+#define MAX_PATH 200
 
 // parse command line args
 void paramChecker(int n, char *argv[], char *toCheck, char **result)
@@ -46,36 +45,7 @@ void paramChecker(int n, char *argv[], char *toCheck, char **result)
     }
 }
 
-// Returns hostname for the local computer 
-void checkHostName(int hostname) 
-{ 
-    if (hostname == -1) 
-    { 
-        perror("gethostname"); 
-        exit(1); 
-    } 
-} 
-  
-// Returns host information corresponding to host name 
-void checkHostEntry(struct hostent * hostentry) 
-{ 
-    if (hostentry == NULL) 
-    { 
-        perror("gethostbyname"); 
-        exit(1); 
-    } 
-} 
-  
-// Converts space-delimited IPv4 addresses 
-// to dotted-decimal format 
-void checkIPbuffer(char *IPbuffer) 
-{ 
-    if (NULL == IPbuffer) 
-    { 
-        perror("inet_ntoa"); 
-        exit(1); 
-    } 
-} 
+
 
 int main(int argc, char *argv[])
 {
@@ -110,10 +80,7 @@ int main(int argc, char *argv[])
     free(workerThreads);
     free(bufferSize);
     free(serverPortStr);
-    //
-    // pthread_cond_init(&condBuffer, NULL);
-    // pthread_mutex_init(&mutexBuffer, NULL);
-    // pthread_mutex_init(&mutexList, NULL);
+
     //
     char hostbuffer[256]; 
     char *IPbuffer; 
@@ -141,7 +108,6 @@ int main(int argc, char *argv[])
     strcpy(arguments.serverIP, serverIP);
     strcpy(arguments.myIP, IPbuffer);
 
-
     ///
 
     strcpy(argumentsWorkers.dirName, dirName);
@@ -150,7 +116,6 @@ int main(int argc, char *argv[])
 
     printf("before thread\n");
     pthread_create(&threads[0], NULL, Mainthread, &arguments);
-
     //    
     for(int i = 1 ; i<threadsNum ;i ++){
         pthread_create(&threads[i], NULL, threadsWork, &argumentsWorkers);

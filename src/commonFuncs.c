@@ -123,7 +123,13 @@ int make_socket(char *myIP, int port)
 int connect_to_socket(char *myIP, int port)
 {
 	struct sockaddr_in sock_addr;
-	int socketD = socket(AF_INET, SOCK_STREAM, 0);
+	int socketD = 0;
+	if ((socketD = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		printf("\n Socket creation error \n");
+		pthread_exit(0);
+	}
+	memset(&sock_addr, '0', sizeof(sock_addr));
 	sock_addr.sin_family = AF_INET;
 	sock_addr.sin_addr.s_addr = inet_addr(myIP);
 	sock_addr.sin_port = htons(port);
@@ -135,4 +141,18 @@ int connect_to_socket(char *myIP, int port)
 		printf("Error in Connection\n");
 
 	return socketD;
+}
+
+char *strremove(char *str, const char *sub)
+{
+    size_t len = strlen(sub);
+    if (len > 0)
+    {
+        char *p = str;
+        while ((p = strstr(p, sub)) != NULL)
+        {
+            memmove(p, p + len, strlen(p + len) + 1);
+        }
+    }
+    return str;
 }
