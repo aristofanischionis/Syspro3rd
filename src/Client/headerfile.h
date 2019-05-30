@@ -37,6 +37,7 @@ struct args_Workers
 {
     char myIP[25];
     int myPort;
+    char dirName[512];
 };
 
 typedef struct buffer_entry

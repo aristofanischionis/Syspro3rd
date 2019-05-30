@@ -83,11 +83,41 @@ void *threadsWork(void *args)
 
             send(sock, "GET_FILE_LIST", 15, 0);
             recv(sock, buffer, 1024, 0);
-            printf("buffer is -> > >> >> >>>  %s \n", buffer);
+            close(sock);
+            printf("buffer is -> %s \n", buffer);
+            // insert in buffer
+            readFileList(buffer, temp.IPaddress, temp.portNum);
         }
         else
         {
-            printf(" worker in else case \n");
+            pthread_mutex_lock(&mutexList);
+            // it is a file
+            if (exists(&ClientsListHead, temp.IPaddress, temp.portNum) == 0)
+            {
+                perror("--> client not in list");
+                pthread_exit(1);
+            }
+            pthread_mutex_unlock(&mutexList);
+            char *fullPath = malloc(BUFSIZ);
+            FILE *fp;
+            struct stat info;
+            sprintf(fullPath, "%s/%s_%d/%s", arguments->dirName, temp.IPaddress, temp.portNum, temp.pathname);
+            printf("the name of the file is %s \n", fullPath);
+            if (stat(fullPath, &info) != 0)
+            {
+                fprintf(stderr, "stat() error on %s: %s\n", fullPath, strerror(errno));
+                pthread_exit(1);
+            }
+            else if (S_ISREG(info.st_mode))
+            {
+                // it is a file
+                
+            }
+            else{
+                // not exists
+            }
+
+            free(fullPath);
         }
     }
 

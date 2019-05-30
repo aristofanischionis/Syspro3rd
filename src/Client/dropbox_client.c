@@ -140,6 +140,14 @@ int main(int argc, char *argv[])
     strcpy(arguments.dirName, dirName);
     strcpy(arguments.serverIP, serverIP);
     strcpy(arguments.myIP, IPbuffer);
+
+
+    ///
+
+    strcpy(argumentsWorkers.dirName, dirName);
+    strcpy(argumentsWorkers.myIP, IPbuffer);
+    argumentsWorkers.myPort = port;
+
     printf("before thread\n");
     pthread_create(&threads[0], NULL, Mainthread, &arguments);
 
