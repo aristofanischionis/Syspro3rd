@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <arpa/inet.h> 
 #include "headerfile.h"
 #include "../HeaderFiles/LinkedList.h"
 #define MAX_PATH 200
@@ -44,6 +45,37 @@ void paramChecker(int n, char *argv[], char *toCheck, char **result)
         i++;
     }
 }
+
+// Returns hostname for the local computer 
+void checkHostName(int hostname) 
+{ 
+    if (hostname == -1) 
+    { 
+        perror("gethostname"); 
+        exit(1); 
+    } 
+} 
+  
+// Returns host information corresponding to host name 
+void checkHostEntry(struct hostent * hostentry) 
+{ 
+    if (hostentry == NULL) 
+    { 
+        perror("gethostbyname"); 
+        exit(1); 
+    } 
+} 
+  
+// Converts space-delimited IPv4 addresses 
+// to dotted-decimal format 
+void checkIPbuffer(char *IPbuffer) 
+{ 
+    if (NULL == IPbuffer) 
+    { 
+        perror("inet_ntoa"); 
+        exit(1); 
+    } 
+} 
 
 int main(int argc, char *argv[])
 {
@@ -83,6 +115,24 @@ int main(int argc, char *argv[])
     // pthread_mutex_init(&mutexBuffer, NULL);
     // pthread_mutex_init(&mutexList, NULL);
     //
+    char hostbuffer[256]; 
+    char *IPbuffer; 
+    struct hostent *host_entry; 
+    int hostname; 
+  
+    // To retrieve hostname 
+    hostname = gethostname(hostbuffer, sizeof(hostbuffer)); 
+    checkHostName(hostname); 
+  
+    // To retrieve host information 
+    host_entry = gethostbyname(hostbuffer); 
+    checkHostEntry(host_entry); 
+  
+    // To convert an Internet network 
+    // address into ASCII string 
+    IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0]));
+
+
     // start
     threads = malloc(threadsNum * sizeof(pthread_t));
     arguments.bufSize = bSize;
@@ -90,6 +140,7 @@ int main(int argc, char *argv[])
     arguments.serverPort = serverPort;
     strcpy(arguments.dirName, dirName);
     strcpy(arguments.serverIP, serverIP);
+    strcpy(arguments.myIP, IPbuffer);
     printf("before thread\n");
     pthread_create(&threads[0], NULL, Mainthread, &arguments);
 

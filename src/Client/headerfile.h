@@ -26,6 +26,7 @@ void terminating();
 struct args_MainThread
 {
     char serverIP[25];
+    char myIP[25];
     int serverPort;
     int clientPort;
     char dirName[512];
@@ -46,7 +47,7 @@ typedef struct buffer_entry
 
 typedef struct buffer
 {
-    buffer_entry *elements;
+    struct buffer_entry *elements;
     int start;
     int end;
     int count;

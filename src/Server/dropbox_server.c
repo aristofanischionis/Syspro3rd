@@ -34,6 +34,37 @@ void perror_exit(char *message)
     exit(EXIT_FAILURE);
 }
 
+// Returns hostname for the local computer 
+void checkHostName(int hostname) 
+{ 
+    if (hostname == -1) 
+    { 
+        perror("gethostname"); 
+        exit(1); 
+    } 
+} 
+  
+// Returns host information corresponding to host name 
+void checkHostEntry(struct hostent * hostentry) 
+{ 
+    if (hostentry == NULL) 
+    { 
+        perror("gethostbyname"); 
+        exit(1); 
+    } 
+} 
+  
+// Converts space-delimited IPv4 addresses 
+// to dotted-decimal format 
+void checkIPbuffer(char *IPbuffer) 
+{ 
+    if (NULL == IPbuffer) 
+    { 
+        perror("inet_ntoa"); 
+        exit(1); 
+    } 
+} 
+
 int main(int argc, char *argv[])
 {
     Node *headList = NULL;
@@ -59,6 +90,21 @@ int main(int argc, char *argv[])
     struct sockaddr_in address;
     char *buffer; //data buffer of 1K
     buffer = malloc(BUFSIZ + 1);
+    char hostbuffer[256]; 
+    char *IPbuffer; 
+    struct hostent *host_entry; 
+    int hostname; 
+    // To retrieve hostname 
+    hostname = gethostname(hostbuffer, sizeof(hostbuffer)); 
+    checkHostName(hostname); 
+  
+    // To retrieve host information 
+    host_entry = gethostbyname(hostbuffer); 
+    checkHostEntry(host_entry); 
+  
+    // To convert an Internet network 
+    // address into ASCII string 
+    IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0])); 
 
     //set of socket descriptors
     fd_set readfds;
@@ -85,7 +131,7 @@ int main(int argc, char *argv[])
     
     //type of socket created
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_addr.s_addr = inet_addr(IPbuffer);
     address.sin_port = htons(port);
 
     //bind the socket to localhost port 8888
@@ -94,7 +140,7 @@ int main(int argc, char *argv[])
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
-    printf("Listener on port %d \n", port);
+    printf("Listener on IP: %s, port %d \n", IPbuffer, port);
 
     //try to specify maximum of 3 pending connections for the master socket
     if (listen(master_socket, 3) < 0)
@@ -104,7 +150,7 @@ int main(int argc, char *argv[])
     }
     //accept the incoming connection
     addrlen = sizeof(address);
-    puts("Waiting for connections ...");
+    printf("Waiting for connections...");
     while (1)
     {
         //clear the socket set

@@ -22,7 +22,7 @@
 
 pthread_mutex_t mutexList;
 
-Buffer *myBuffer;
+Buffer myBuffer;
 char *clientIP;
 int port, server;
 Node *ClientsListHead;
@@ -72,7 +72,7 @@ void *Mainthread(void *args)
 
     // binding client with that port
     client_addr.sin_family = AF_INET;
-    client_addr.sin_addr.s_addr = inet_addr(clientIP);
+    client_addr.sin_addr.s_addr = inet_addr(arguments->myIP);
     client_addr.sin_port = htons(arguments->clientPort);
     port = arguments->clientPort;
     // signal(SIGINT, terminating);
@@ -525,7 +525,7 @@ void sendFile(char *dirName, char *pathName, char *version, int socketSD)
     versionNow = malloc(33);
     fullPath = malloc(BUFSIZ);
     struct stat info;
-    appendString(fullPath, dirName, pathName);
+    appendString(&fullPath, dirName, pathName);
     if (stat(fullPath, &info) != 0)
     {
         // there is not a file
@@ -556,12 +556,11 @@ long long countSize(char *filename)
     if (stat(filename, &sb) == -1)
     {
         perror("stat");
+        exit(1);
     }
-    else
-    {
-        printf("File size: %lld bytes\n", (long long)sb.st_size);
-        return ((long long)sb.st_size);
-    }
+
+    printf("File size: %lld bytes\n", (long long)sb.st_size);
+    return ((long long)sb.st_size);
 }
 
 void sendFileContents(char *pathName, int socketSD, char *version)
@@ -582,7 +581,7 @@ void sendFileContents(char *pathName, int socketSD, char *version)
     // count size
     size = countSize(pathName);
     //
-    sprintf(result, "FILE_SIZE %s %d ", version, size);
+    sprintf(result, "FILE_SIZE %s %lld ", version, size);
     send(socketSD, result, strlen(result), 0);
 
     // read BUFSIZ and send and then again till it is done

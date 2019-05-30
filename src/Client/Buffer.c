@@ -19,7 +19,7 @@ int BUF_SIZE;
 pthread_cond_t cond_nonempty;
 pthread_cond_t cond_nonfull;
 pthread_mutex_t mutexBuffer;
-extern Buffer *myBuffer;
+extern Buffer myBuffer;
 
 
 void init(int bufSize)
@@ -28,23 +28,23 @@ void init(int bufSize)
     pthread_cond_init(&cond_nonempty, NULL);
     pthread_cond_init(&cond_nonfull, NULL);
     pthread_mutex_init(&mutexBuffer, NULL);
-    myBuffer->elements = malloc(bufSize * sizeof(buffer_entry));
-    myBuffer->start = 0;
-    myBuffer->end = -1;
-    myBuffer->count = 0;
+    myBuffer.elements = malloc(bufSize * sizeof(struct buffer_entry));
+    myBuffer.start = 0;
+    myBuffer.end = -1;
+    myBuffer.count = 0;
 }
 
 void put(buffer_entry data)
 {
     pthread_mutex_lock(&mutexBuffer);
-    while (myBuffer->count >= BUF_SIZE)
+    while (myBuffer.count >= BUF_SIZE)
     {
         printf(">> Found  Buffer  Full \n");
         pthread_cond_wait(&cond_nonfull, &mutexBuffer);
     }
-    myBuffer->end = (myBuffer->end + 1) % BUF_SIZE;
-    myBuffer->elements[myBuffer->end] = data;
-    myBuffer->count++;
+    myBuffer.end = (myBuffer.end + 1) % BUF_SIZE;
+    myBuffer.elements[myBuffer.end] = data;
+    myBuffer.count++;
     pthread_mutex_unlock(&mutexBuffer);
 }
 
@@ -56,14 +56,14 @@ struct buffer_entry retrieve()
     strcpy(data.version, "-1");
     data.portNum = 0;
     pthread_mutex_lock(&mutexBuffer);
-    while (myBuffer->count <= 0)
+    while (myBuffer.count <= 0)
     {
         printf(">> Found  Buffer  Empty \n");
         pthread_cond_wait(&cond_nonempty, &mutexBuffer);
     }
-    data = myBuffer->elements[myBuffer->start];
-    myBuffer->start = (myBuffer->start + 1) % BUF_SIZE;
-    myBuffer->count--;
+    data = myBuffer.elements[myBuffer.start];
+    myBuffer.start = (myBuffer.start + 1) % BUF_SIZE;
+    myBuffer.count--;
     pthread_mutex_unlock(&mutexBuffer);
     return data;
 }
@@ -73,7 +73,6 @@ void destroy()
     pthread_cond_destroy(&cond_nonempty);
     pthread_cond_destroy(&cond_nonfull);
     pthread_mutex_destroy(&mutexBuffer);
-    free(myBuffer->elements);
-    free(myBuffer);
+    free(myBuffer.elements);
 }
 
