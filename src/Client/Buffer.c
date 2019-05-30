@@ -39,7 +39,7 @@ void put(buffer_entry data)
     pthread_mutex_lock(&mutexBuffer);
     while (myBuffer.count >= BUF_SIZE)
     {
-        printf(">> Found  Buffer  Full \n");
+        // printf(">> Found  Buffer  Full \n");
         pthread_cond_wait(&cond_nonfull, &mutexBuffer);
     }
     myBuffer.end = (myBuffer.end + 1) % BUF_SIZE;
@@ -58,7 +58,7 @@ struct buffer_entry retrieve()
     pthread_mutex_lock(&mutexBuffer);
     while (myBuffer.count <= 0)
     {
-        printf(">> Found  Buffer  Empty \n");
+        // printf(">> Found  Buffer  Empty \n");
         pthread_cond_wait(&cond_nonempty, &mutexBuffer);
     }
     data = myBuffer.elements[myBuffer.start];

@@ -23,6 +23,8 @@
 pthread_mutex_t mutexList;
 
 Buffer myBuffer;
+extern pthread_cond_t cond_nonempty;
+extern pthread_cond_t cond_nonfull;
 char *clientIP;
 int port, server;
 Node *ClientsListHead;
@@ -44,10 +46,52 @@ void terminating()
 
 void *threadsWork(void *args)
 {
+    printf("--------------------> threads work \n");
+    fflush(stdout);
     struct args_Workers *arguments;
     arguments = (struct args_Workers *)args;
+    buffer_entry temp;
+    while (1)
+    {
+        temp = retrieve();
+        pthread_cond_signal(&cond_nonfull);
+        if (!strcmp(temp.pathname, "-1"))
+        {
+            // then it is not a file i should send a get file list
+            //
+            int sock = 0;
+            struct sockaddr_in client_addr;
+            char *buffer;
+            buffer = malloc(BUFSIZ);
 
-    return NULL;
+            if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+            {
+                printf("\n Socket creation error \n");
+                pthread_exit(0);
+            }
+
+            memset(&client_addr, '0', sizeof(client_addr));
+            client_addr.sin_family = AF_INET;
+            client_addr.sin_addr.s_addr = inet_addr(temp.IPaddress);
+            client_addr.sin_port = htons(temp.portNum);
+
+            if (connect(sock, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0)
+            {
+                printf("\nConnection Failed \n");
+                pthread_exit(0);
+            }
+
+            send(sock, "GET_FILE_LIST", 15, 0);
+            recv(sock, buffer, 1024, 0);
+            printf("buffer is -> > >> >> >>>  %s \n", buffer);
+        }
+        else
+        {
+            printf(" worker in else case \n");
+        }
+    }
+
+    pthread_exit(0);
 }
 
 void *Mainthread(void *args)
@@ -58,7 +102,7 @@ void *Mainthread(void *args)
     ClientsListHead = NULL;
     // char *clientIP;
     clientIP = malloc(20);
-    strcpy(clientIP, "127.0.0.1");
+    // strcpy(clientIP, "127.0.0.1");
     arguments = (struct args_MainThread *)args;
     char *receivedMes;
     receivedMes = malloc(BUFSIZ + 1);
@@ -76,6 +120,7 @@ void *Mainthread(void *args)
     client_addr.sin_port = htons(arguments->clientPort);
     port = arguments->clientPort;
     // signal(SIGINT, terminating);
+    strcpy(clientIP, arguments->myIP);
     struct sigaction a;
     a.sa_handler = terminating;
     a.sa_flags = 0;
@@ -299,7 +344,8 @@ void *Mainthread(void *args)
     // pthread_cond_destroy(&cond);
     // pthread_mutex_destroy(&mutex);
     // ===========================================================================
-    return NULL;
+    // return NULL;
+    pthread_exit(0);
 }
 
 void sendLogOn(struct sockaddr_in client_addr, int server)
@@ -393,6 +439,8 @@ void putRequestsInBuffer()
     // I will extract info from list and place it in buffer entries to put it in buffer
     buffer_entry temp;
     Node *node = ClientsListHead;
+    pthread_mutex_lock(&mutexList);
+
     while (node != NULL)
     {
         strcpy(temp.IPaddress, node->IP);
@@ -401,8 +449,10 @@ void putRequestsInBuffer()
         strcpy(temp.version, "-1");
         // temp is the ready request so put it in buffer
         put(temp);
+        pthread_cond_signal(&cond_nonempty);
         node = node->next;
     }
+    pthread_mutex_unlock(&mutexList);
 }
 
 void deleteFromList(char *input)
@@ -439,7 +489,7 @@ void insertInClientList(char *input)
     strcpy(temp.version, "-1");
     // temp is the ready request so put it in buffer
     put(temp);
-
+    pthread_cond_signal(&cond_nonempty);
     free(IP);
 }
 
@@ -671,7 +721,7 @@ void readFileList(char *source, char *IPsender, int portSender)
         temp.portNum = portSender;
 
         put(temp);
-
+        pthread_cond_signal(&cond_nonempty);
         sprintf(tobeRemov, "< %s , %s > ", pathName, version);
         sourceStr = strremove(sourceStr, tobeRemov);
     }
@@ -682,7 +732,7 @@ void readFileList(char *source, char *IPsender, int portSender)
     free(pathName);
 }
 
-void readFile(char *source, int socketSD, char* fullPath)
+void readFile(char *source, int socketSD, char *fullPath)
 {
     FILE *fp;
     char *sourceStr;
@@ -699,7 +749,8 @@ void readFile(char *source, int socketSD, char* fullPath)
     sscanf(sourceStr, "FILE_SIZE %s %d ", version, &bytes);
     times = bytes / BUFSIZ + 1;
     fp = fopen(fullPath, "w");
-    if(fp == NULL){
+    if (fp == NULL)
+    {
         fprintf(stderr, "error in opening file readfile\n");
         exit(EXIT_FAILURE);
     }
@@ -708,8 +759,8 @@ void readFile(char *source, int socketSD, char* fullPath)
     {
         strcpy(chunk, "");
         recv(socketSD, chunk, BUFSIZ, 0);
-        // so now I have part of the file's 
-        fwrite(chunk , 1 , sizeof(chunk) , fp);
+        // so now I have part of the file's
+        fwrite(chunk, 1, sizeof(chunk), fp);
     }
 
     fclose(fp);

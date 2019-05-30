@@ -35,6 +35,8 @@ struct args_MainThread
 
 struct args_Workers
 {
+    char myIP[25];
+    int myPort;
 };
 
 typedef struct buffer_entry

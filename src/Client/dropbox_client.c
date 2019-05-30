@@ -132,7 +132,6 @@ int main(int argc, char *argv[])
     // address into ASCII string 
     IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0]));
 
-
     // start
     threads = malloc(threadsNum * sizeof(pthread_t));
     arguments.bufSize = bSize;
@@ -151,9 +150,7 @@ int main(int argc, char *argv[])
     //
     for(int i = 0 ; i<threadsNum ;i ++){
         pthread_join(threads[i], NULL);
-
     }
-    // pthread_join(threads[0], NULL);
 
     printf("After Thread\n");
     exit(0);
