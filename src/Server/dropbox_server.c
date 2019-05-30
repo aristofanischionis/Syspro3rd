@@ -15,62 +15,45 @@
 #include "../HeaderFiles/LinkedList.h"
 #include "headerfile.h"
 
-void perror_exit(char *msg);
-void sanitize(char *str);
+Node *headList;
 
-/*  it  would  be  very  bad  if  someone  passed  us an  dirname  like* "; rm  *"   and  we  naively  created  a  command   "ls ; rm  *".* So..we  remove  everything  but  slashes  and  alphanumerics .*/
-void sanitize(char *str)
-{
-    char *src, *dest;
-    for (src = dest = str; *src; src++)
-        if (*src == '/' || isalnum(*src))
-            *dest++ = *src;
-    *dest = '\0';
-}
-/*  Print  error  message  and  exit  */
-void perror_exit(char *message)
-{
-    perror(message);
-    exit(EXIT_FAILURE);
-}
+// // Returns hostname for the local computer
+// void checkHostName(int hostname)
+// {
+//     if (hostname == -1)
+//     {
+//         perror("gethostname");
+//         exit(1);
+//     }
+// }
 
-// Returns hostname for the local computer
-void checkHostName(int hostname)
-{
-    if (hostname == -1)
-    {
-        perror("gethostname");
-        exit(1);
-    }
-}
+// // Returns host information corresponding to host name
+// void checkHostEntry(struct hostent *hostentry)
+// {
+//     if (hostentry == NULL)
+//     {
+//         perror("gethostbyname");
+//         exit(1);
+//     }
+// }
 
-// Returns host information corresponding to host name
-void checkHostEntry(struct hostent *hostentry)
-{
-    if (hostentry == NULL)
-    {
-        perror("gethostbyname");
-        exit(1);
-    }
-}
+// // Converts space-delimited IPv4 addresses
+// // to dotted-decimal format
+// void checkIPbuffer(char *IPbuffer)
+// {
+//     if (NULL == IPbuffer)
+//     {
+//         perror("inet_ntoa");
+//         exit(1);
+//     }
+// }
 
-// Converts space-delimited IPv4 addresses
-// to dotted-decimal format
-void checkIPbuffer(char *IPbuffer)
-{
-    if (NULL == IPbuffer)
-    {
-        perror("inet_ntoa");
-        exit(1);
-    }
-}
-
-int read_from_client(int filedes)
+int read_from_client(int socketDescr)
 {
     char buffer[BUFSIZ];
     int nbytes;
 
-    nbytes = read(filedes, buffer, BUFSIZ);
+    nbytes = read(socketDescr, buffer, BUFSIZ);
     if (nbytes < 0)
     {
         /* Read error. */
@@ -86,21 +69,28 @@ int read_from_client(int filedes)
         fprintf(stderr, "Server: got message: '%s'\n", buffer);
         if (strstr(buffer, "LOG_ON") != NULL)
         {
-            int cliSocket;
+
             char *IP = malloc(25);
             strcpy(IP, "");
             int port = 0;
-            cliSocket = logOn(&headList, buffer, sd, max_clients, &client_socket, &max_sd, readfds, &IP, &port);
-        }
-        else if (!strcmp(buffer, "GET_CLIENTS"))
-        {
-            getClients(&headList, cliSocket, IP, port);
-        }
+            int cliSocket = logOn(&headList, buffer, &IP, &port);
+            // keepalive this connection and wait for the get clients
+            strcpy(buffer, "");
+            recv(cliSocket, buffer, BUFSIZ + 1, 0);
 
+            if (!strcmp(buffer, "GET_CLIENTS"))
+            {
+                getClients(&headList, socketDescr, IP, port);
+            }
+            else
+            {
+                fprintf(stderr, "something went wrong in receiving getclients\n");
+            }
+        }
         else if (!strcmp(buffer, "LOG_OFF"))
         {
             printf("buffer --> %s\n", buffer);
-            // logOff(&headList, buffer, cliSocket, max_clients, client_socket);
+            logOff(&headList, buffer, socketDescr);
         }
         else
         {
@@ -110,9 +100,53 @@ int read_from_client(int filedes)
     }
 }
 
+// int make_socket(char *myIP, int port)
+// {
+//     int socketD;
+//     int opt = 1;
+//     struct sockaddr_in sock_addr;
+//     sock_addr.sin_family = AF_INET;
+//     sock_addr.sin_addr.s_addr = inet_addr(myIP);
+//     sock_addr.sin_port = htons(port);
+//     if ((socketD = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+//     {
+//         perror("socket failed");
+//         exit(EXIT_FAILURE);
+//     }
+//     if (setsockopt(socketD, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
+//     {
+//         perror("setsockopt");
+//         exit(EXIT_FAILURE);
+//     }
+//     if (bind(socketD, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) < 0)
+//     {
+//         perror("bind failed");
+//         exit(EXIT_FAILURE);
+//     }
+
+//     return socketD;
+// }
+
+// int connect_to_socket(char *myIP, int port)
+// {
+//     struct sockaddr_in sock_addr;
+//     int socketD = socket(AF_INET, SOCK_STREAM, 0);
+//     sock_addr.sin_family = AF_INET;
+//     sock_addr.sin_addr.s_addr = inet_addr(myIP);
+//     sock_addr.sin_port = htons(port);
+//     // connect
+//     int con = connect(socketD, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
+//     if (con == 0)
+//         printf("Client Connected\n");
+//     else
+//         printf("Error in Connection\n");
+
+//     return socketD;
+// }
+
 int main(int argc, char *argv[])
 {
-    Node *headList = NULL;
+    headList = NULL;
     int port = 0;
     if (argc != 3)
     {
@@ -121,13 +155,6 @@ int main(int argc, char *argv[])
     }
     port = atoi(argv[2]);
 
-    int opt = 1;
-    int *client_socket;
-    client_socket = malloc(30 * sizeof(int));
-    int master_socket, addrlen, new_socket,
-        max_clients = 30, activity, i, valread, sd;
-    int max_sd;
-    struct sockaddr_in address;
     char *buffer; //data buffer of 1K
     buffer = malloc(BUFSIZ + 1);
     char hostbuffer[256];
@@ -152,7 +179,7 @@ int main(int argc, char *argv[])
     size_t size;
 
     /* Create the socket and set it up to accept connections. */
-    sock = make_socket(port);
+    sock = make_socket(IPbuffer, port);
     if (listen(sock, 1) < 0)
     {
         perror("listen");
