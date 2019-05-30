@@ -245,11 +245,17 @@ int main(int argc, char *argv[])
                     if (strstr(buffer, "LOG_ON") != NULL)
                     {
                         int cliSocket;
-                        cliSocket = logOn(&headList, buffer, sd, max_clients, &client_socket, &max_sd, readfds);
+                        char * IP = malloc(25);
+                        strcpy(IP, "");
+                        int port = 0;
+                        cliSocket = logOn(&headList, buffer, sd, max_clients, &client_socket, &max_sd, readfds, &IP, &port);
                         recv(sd, buffer, 1024, 0);
                         printf("buffer -------> %s\n", buffer);
                         if(!strcmp(buffer, "GET_CLIENTS")){
-                            getClients(&headList, cliSocket); 
+                            getClients(&headList, cliSocket, IP, port); 
+                            // free(IP);
+
+                            
                             // recv(sd, buffer, 1024, 0);
                             // if(strstr(buffer, "LOG_OFF") != NULL){
                             //     logOff(&headList, buffer, cliSocket, max_clients, client_socket);
@@ -264,10 +270,10 @@ int main(int argc, char *argv[])
                             printf("3buffer read --> %s\n", buffer);
                         }
                     }
-                    else if (!strcmp(buffer, "GET_CLIENTS"))
-                    {
-                        getClients(&headList, sd);
-                    }
+                    // else if (!strcmp(buffer, "GET_CLIENTS"))
+                    // {
+                    //     // getClients(&headList, sd, IP, port);
+                    // }
                     else if (!strcmp(buffer, "LOG_OFF"))
                     {
                         printf("buffer --> %s\n", buffer);

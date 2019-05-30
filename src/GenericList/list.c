@@ -121,7 +121,7 @@ void appendString(char **new_str, char *str1, char *str2)
     strcat(*new_str, str2);
 }
 
-void listToString(Node *head_ref, char **result)
+void listToString(Node *head_ref, char **result, char *IP, int port)
 {
     int nodes = 0;
     Node *temp = head_ref;
@@ -133,10 +133,19 @@ void listToString(Node *head_ref, char **result)
     str1 = malloc(BUFSIZ);
     str2 = malloc(60);
     initStr[0] = '\0';
+    nodes--;
+    // minus the node that is us from the list
     sprintf(initStr, "CLIENT_LIST %d ", nodes);
     strcpy(*result, initStr);
+    
     while (temp != NULL)
     {
+        if ((!strcmp(temp->IP, IP)) && (port == temp->port))
+        {
+            // then it is the same client don't include him in the list
+            temp = temp->next;
+            continue;
+        }
         sprintf(retrIpPort, "< %s , %d > ", temp->IP, temp->port);
         strcpy(str1, *result);
         strcpy(str2, retrIpPort);

@@ -12,24 +12,25 @@
 #include "headerfile.h"
 #include "../HeaderFiles/LinkedList.h"
 
-int logOn(Node **headList, char *buffer, int sd, int max_clients, int **client_socket, int *max_sd, fd_set readfds)
+int logOn(Node **headList, char *buffer, int sd, int max_clients, int **client_socket, int *max_sd, fd_set readfds, char **IP, int *port)
 {
-    printf("I am log on\n");
-    char *IP;
-    int port;
+    char *IPaddr;
+    int porta;
     int i = 0;
     int tempSD;
     char *message;
     struct sockaddr_in client_addr;
     message = malloc(256);
-    IP = malloc(20);
-    sscanf(buffer, "LOG_ON < %s , %d >", IP, &port);
-    printf("Server read at log on %s, %d\n", IP, port);
+    IPaddr = malloc(20);
+    sscanf(buffer, "LOG_ON < %s , %d >", IPaddr, &porta);
+    printf("Server read at log on %s, %d\n", IPaddr, porta);
     int client = socket(AF_INET, SOCK_STREAM, 0);
     client_addr.sin_family = AF_INET;
-    client_addr.sin_addr.s_addr = inet_addr(IP);
-    client_addr.sin_port = htons(port);
-    
+    client_addr.sin_addr.s_addr = inet_addr(IPaddr);
+    client_addr.sin_port = htons(porta);
+
+    strcpy(*IP, IPaddr);
+    *port = porta;
     // connect
     int con = connect(client, (struct sockaddr *)&client_addr, sizeof(struct sockaddr_in));
     if (con == 0)
@@ -37,11 +38,10 @@ int logOn(Node **headList, char *buffer, int sd, int max_clients, int **client_s
     else
         printf("Error in Connection\n");
 
-
     // send(sd, "WELCOME", 9, 0);
     // now that I have a a new client update list
     // push it in the list, if t doesn't exist
-    push(headList, IP, port);
+    push(headList, IPaddr, porta);
     // change sd to client because it is the new socket to connect and send messages.
     for (i = 0; i < max_clients; i++)
     {
@@ -64,7 +64,7 @@ int logOn(Node **headList, char *buffer, int sd, int max_clients, int **client_s
     // printf("The list currently consists of: \n");
     // printList(*headList);
     // now I have to send to all users in the list a message USER_ON
-    sprintf(message, "USER_ON < %s , %d >", IP, port);
+    sprintf(message, "USER_ON < %s , %d >", IPaddr, porta);
     printf("My message is : %s", message);
 
     // send it to all others
@@ -82,18 +82,20 @@ int logOn(Node **headList, char *buffer, int sd, int max_clients, int **client_s
     return client;
 }
 
-void getClients(Node **headList, int sd)
+void getClients(Node **headList, int sd, char *IP, int port)
 {
     char *result;
     result = malloc(BUFSIZ);
-    listToString(*headList, &result);
+
+    listToString(*headList, &result, IP, port);
     printf("My string is : %s\n", result);
     // now send it to this socket
     send(sd, result, strlen(result) + 1, 0);
     free(result);
+    free(IP);
 }
 
-void logOff(Node **headList, char* buffer, int sd, int max_clients, int client_socket[])
+void logOff(Node **headList, char *buffer, int sd, int max_clients, int client_socket[])
 {
     char *IP, *message;
     int port, tempSD, i;

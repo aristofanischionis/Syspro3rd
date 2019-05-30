@@ -411,6 +411,9 @@ void tokenizeClientList(char *input)
     if (clientsNum == 0)
     {
         printf("I am the only client \n");
+        free(clientListStr);
+        free(tobeRemov);
+        free(IP);
         return;
     }
     sprintf(tobeRemov, "CLIENT_LIST %d ", clientsNum);

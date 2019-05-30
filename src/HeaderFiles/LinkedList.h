@@ -16,7 +16,7 @@ void appendString(char **new_str, char *str1, char *str2);
 void push(Node **head_ref, char *IP, int port);
 void printList(Node *n);
 int countNodes(Node *n);
-void listToString(Node *head_ref, char **result);
+void listToString(Node *head_ref, char **result, char* IP, int port);
 int exists(Node **head_ref, char *IP, int port);
 
 #endif
