@@ -95,18 +95,17 @@ void *threadsWork(void *args)
             if (exists(&ClientsListHead, temp.IPaddress, temp.portNum) == 0)
             {
                 perror("--> client not in list");
-                pthread_exit(1);
+                pthread_exit(NULL);
             }
             pthread_mutex_unlock(&mutexList);
             char *fullPath = malloc(BUFSIZ);
-            FILE *fp;
             struct stat info;
             sprintf(fullPath, "%s/%s_%d/%s", arguments->dirName, temp.IPaddress, temp.portNum, temp.pathname);
             printf("the name of the file is %s \n", fullPath);
             if (stat(fullPath, &info) != 0)
             {
                 fprintf(stderr, "stat() error on %s: %s\n", fullPath, strerror(errno));
-                pthread_exit(1);
+                pthread_exit(NULL);
             }
             else if (S_ISREG(info.st_mode))
             {
