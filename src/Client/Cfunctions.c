@@ -15,7 +15,6 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include <fcntl.h>
-
 #include "headerfile.h"
 #include "../HeaderFiles/Common.h"
 #include "../HeaderFiles/LinkedList.h"
@@ -157,31 +156,20 @@ void *threadsWork(void *args)
     pthread_exit(0);
 }
 
-
-// I now need to put the new select method in here and replace the one that exists now
-// https://www.gnu.org/software/libc/manual/html_node/Server-Example.html?fbclid=IwAR1PHqrG94YX21XfsHb_77PDzgNFAr4inv-COyXCo5CcJEQZRi5MkAmFFfU
-// ---------------->
 void *Mainthread(void *args)
 {
-    pthread_mutex_init(&mutexList, NULL);
+    fd_set active_fd_set, read_fd_set;
+    int i;
+    struct sockaddr_in clientname;
+    socklen_t size;
     struct args_MainThread *arguments;
+    pthread_mutex_init(&mutexList, NULL);
     ClientsListHead = NULL;
     clientIP = malloc(25);
     arguments = (struct args_MainThread *)args;
-    char *receivedMes;
-    receivedMes = malloc(BUFSIZ + 1);
-    strcpy(receivedMes, "");
-    struct sockaddr_in server_addr, client_addr;
-    server = socket(AF_INET, SOCK_STREAM, 0);
 
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(arguments->serverIP);
-    server_addr.sin_port = htons(arguments->serverPort);
+    server = connect_to_socket(arguments->serverIP, arguments->serverPort);
 
-    // binding client with that port
-    client_addr.sin_family = AF_INET;
-    client_addr.sin_addr.s_addr = inet_addr(arguments->myIP);
-    client_addr.sin_port = htons(arguments->clientPort);
     port = arguments->clientPort;
     // signal(SIGINT, terminating);
     strcpy(clientIP, arguments->myIP);
@@ -193,231 +181,160 @@ void *Mainthread(void *args)
     // initialize buffer
     init(arguments->bufSize);
     // ----------------> establish client socket
-    printf("clientip %s, clientport %d,  serverip %s, serverport %d \n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
+    printf("clientip %s, clientport %d,  serverip %s, serverport %d \n", arguments->myIP, arguments->clientPort, arguments->serverIP, arguments->serverPort);
 
-    int con = connect(server, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
-    if (con == 0)
-        printf("Client Connected\n");
-    else
-        printf("Error in Connection\n");
+    int client = connect_to_socket(arguments->myIP, arguments->clientPort);
 
-    // ---------------------------------------------------------------------------
-
-    //set of socket descriptors
-    fd_set readfds;
-    int opt = 1, max_sd;
-    int client, addrlen, new_socket, client_socket[30],
-        max_clients = 30, activity, i, valread, sd;
-    //initialise all client_socket[] to 0 so not checked
-    for (i = 0; i < max_clients; i++)
-    {
-        client_socket[i] = 0;
-    }
-
-    //create a master socket
-    if ((client = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
-
-    //set master socket to allow multiple connections ,
-    //this is just a good habit, it will work without this
-    if (setsockopt(client, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
-    {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-
-    //bind the socket to localhost port 8888
-    if (bind(client, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0)
-    {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
-    printf("Listener on port %d \n", arguments->clientPort);
-
-    //try to specify maximum of 3 pending connections for the master socket
-    if (listen(client, 3) < 0)
+    if (listen(client, 1) < 0)
     {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    //accept the incoming connection
-    addrlen = sizeof(client_addr);
-    puts("Waiting for connections ...");
-    sendLogOn(client_addr, server);
+
+    /* Initialize the set of active sockets. */
+    FD_ZERO(&active_fd_set);
+    FD_SET(client, &active_fd_set);
+    // send the log on
+    sendLogOn(arguments->myIP, arguments->clientPort, server);
     while (1)
     {
-        //clear the socket set
-        FD_ZERO(&readfds);
-        //add master socket to set
-        FD_SET(client, &readfds);
-        max_sd = client;
-        //add child sockets to set
-        for (i = 0; i < max_clients; i++)
+        /* Block until input arrives on one or more active sockets. */
+        read_fd_set = active_fd_set;
+        if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
         {
-            //socket descriptor
-            sd = client_socket[i];
-
-            //if valid socket descriptor then add to read list
-            if (sd > 0)
-                FD_SET(sd, &readfds);
-
-            //highest file descriptor number, need it for the select function
-            if (sd > max_sd)
-                max_sd = sd;
+            perror("select");
+            exit(EXIT_FAILURE);
         }
 
-        //wait for an activity on one of the sockets , timeout is NULL ,
-        //so wait indefinitely
-
-        activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-
-        if ((activity < 0) && (errno != EINTR))
-        {
-            printf("select error");
-        }
-
-        //If something happened on the master socket ,
-        //then its an incoming connection
-
-        if (FD_ISSET(client, &readfds))
-        {
-            if ((new_socket = accept(client, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen)) < 0)
+        /* Service all the sockets with input pending. */
+        for (i = 0; i < FD_SETSIZE; ++i)
+            if (FD_ISSET(i, &read_fd_set))
             {
-                perror("accept");
-                exit(EXIT_FAILURE);
-            }
-
-            //inform user of socket number - used in send and receive commands
-            printf("New connection , socket fd is %d , ip is : %s , port : %d\n ", new_socket, clientIP, arguments->clientPort);
-            //add new socket to array of sockets
-            for (i = 0; i < max_clients; i++)
-            {
-                //if position is empty
-                if (client_socket[i] == 0)
+                if (i == client)
                 {
-                    client_socket[i] = new_socket;
-                    printf("Adding to list of sockets as %d\n", i);
-                    break;
-                }
-            }
-        }
-        //else its some IO operation on some other socket
-        // -------------------------------> mpalitsa
-
-        for (i = 0; i < max_clients; i++)
-        {
-            sd = client_socket[i];
-
-            if (FD_ISSET(sd, &readfds))
-            {
-                //Check if it was for closing , and also read the
-                //incoming message
-                if ((valread = read(sd, receivedMes, 1024)) == 0)
-                {
-                    //Somebody disconnected , get his details and print
-                    // printf("Host disconnected , ip %s , port %d \n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-                    // //Close the socket and mark as 0 in list for reuse
-                    close(sd);
-                    client_socket[i] = 0;
+                    /* Connection request on original socket. */
+                    int new;
+                    size = sizeof(clientname);
+                    new = accept(client,
+                                 (struct sockaddr *)&clientname,
+                                 &size);
+                    if (new < 0)
+                    {
+                        perror("accept");
+                        exit(EXIT_FAILURE);
+                    }
+                    fprintf(stderr,
+                            "Client: connect from host %s, port %hd.\n",
+                            inet_ntoa(clientname.sin_addr),
+                            ntohs(clientname.sin_port));
+                    FD_SET(new, &active_fd_set);
                 }
                 else
                 {
-                    //set the string terminating NULL byte on the end
-                    //of the data read
-                    receivedMes[valread] = '\0';
-                    // send(sd, buffer, strlen(buffer), 0);
-                    if (!strcmp(receivedMes, "GET_FILE_LIST"))
+                    /* Data arriving on an already-connected socket. */
+                    char *dir;
+                    dir = malloc(512);
+                    strcpy(dir, arguments->dirName);
+                    if (read_from_client1(i, dir) < 0)
                     {
-                        printf("received get file list ... \n");
-                        char *dir;
-                        dir = malloc(512);
-                        strcpy(dir, arguments->dirName);
-                        sendFileList(dir, sd);
-                        free(dir);
-                    }
-                    else if (strstr(receivedMes, "GET_FILE") != NULL)
-                    {
-                        printf("received get file ... \n");
-                        char *dir;
-                        char *version;
-                        char *path;
-                        dir = malloc(512);
-                        version = malloc(33);
-                        path = malloc(BUFSIZ);
-                        strcpy(dir, arguments->dirName);
-                        // get the filename and version
-                        sscanf(receivedMes, "GET_FILE < %s , %s >", path, version);
-                        sendFile(dir, path, version, sd);
-                        free(dir);
-                        free(path);
-                        free(version);
-                    }
-                    else if (strstr(receivedMes, "USER_OFF") != NULL)
-                    {
-                        printf("received user off.. %s\n", receivedMes);
-                        deleteFromList(receivedMes);
-                    }
-                    else if (strstr(receivedMes, "CLIENT_LIST") != NULL)
-                    {
-                        // tokenize it and push it in to list with mutexes
-                        printf("received client list.. %s\n", receivedMes);
-                        tokenizeClientList(receivedMes);
-                        // now I have all of the clients in my list
-                        // put the requests in the buffer for all the entries in my list
-                        putRequestsInBuffer();
-                    }
-                    else if (!strcmp(receivedMes, "WELCOME"))
-                    {
-                        printf("sending get clients..\n");
-                        sendGetClients(server);
-                    }
-                    else if (strstr(receivedMes, "USER_ON") != NULL)
-                    {
-                        printf("I received info, user on %s\n", receivedMes);
-                        insertInClientList(receivedMes);
-                    }
-                    else if (strstr(receivedMes, "FILE_LIST") != NULL)
-                    {
-                    }
-                    else if (strstr(receivedMes, "FILE_SIZE") != NULL)
-                    {
-                    }
-                    else if (!strcmp(receivedMes, "FILE_UP_TO_DATE"))
-                    {
-                        printf("I received %s\n", receivedMes);
-                    }
-                    else if (!strcmp(receivedMes, "FILE_NOT_FOUND"))
-                    {
-                        printf("I received %s\n", receivedMes);
-                    }
-                    else
-                    {
-                        // it's just a message from server
-                        printf("Server told me--->: %s \n", receivedMes);
+                        close(i);
+                        FD_CLR(i, &active_fd_set);
                     }
                 }
             }
-
-            // ->>>>>>>>>>>>>>>>
-        }
     }
-
-    // pthread_cond_destroy(&cond);
-    // pthread_mutex_destroy(&mutex);
-    // ===========================================================================
-    // return NULL;
-    pthread_exit(0);
 }
 
-void sendLogOn(struct sockaddr_in client_addr, int server)
+int read_from_client1(int socketD, char *dir)
+{
+    char buffer[BUFSIZ + 1];
+    int nbytes;
+
+    nbytes = read(socketD, buffer, BUFSIZ);
+    if (nbytes < 0)
+    {
+        /* Read error. */
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+    else if (nbytes == 0)
+        /* End-of-file. */
+        return -1;
+    else
+    {
+        /* Data read. */
+        fprintf(stderr, "Client: got message: '%s'\n", buffer);
+        if (!strcmp(buffer, "GET_FILE_LIST"))
+        {
+            printf("received get file list ... \n");
+            sendFileList(dir, socketD);
+        }
+        else if (strstr(buffer, "GET_FILE") != NULL)
+        {
+            printf("received get file ... \n");
+            char *version;
+            char *path;
+            version = malloc(33);
+            path = malloc(BUFSIZ);
+            // get the filename and version
+            sscanf(buffer, "GET_FILE < %s , %s >", path, version);
+            sendFile(dir, path, version, socketD);
+            free(path);
+            free(version);
+        }
+        else if (strstr(buffer, "USER_OFF") != NULL)
+        {
+            printf("received user off.. %s\n", buffer);
+            deleteFromList(buffer);
+        }
+        else if (strstr(buffer, "CLIENT_LIST") != NULL)
+        {
+            // tokenize it and push it in to list with mutexes
+            printf("received client list.. %s\n", buffer);
+            tokenizeClientList(buffer);
+            // now I have all of the clients in my list
+            // put the requests in the buffer for all the entries in my list
+            putRequestsInBuffer();
+        }
+        else if (!strcmp(buffer, "WELCOME"))
+        {
+            printf("sending get clients..\n");
+            sendGetClients(server);
+        }
+        else if (strstr(buffer, "USER_ON") != NULL)
+        {
+            printf("I received info, user on %s\n", buffer);
+            insertInClientList(buffer);
+        }
+        else if (strstr(buffer, "FILE_LIST") != NULL)
+        {
+        }
+        else if (strstr(buffer, "FILE_SIZE") != NULL)
+        {
+        }
+        else if (!strcmp(buffer, "FILE_UP_TO_DATE"))
+        {
+            printf("I received %s\n", buffer);
+        }
+        else if (!strcmp(buffer, "FILE_NOT_FOUND"))
+        {
+            printf("I received %s\n", buffer);
+        }
+        else
+        {
+            // it's just a message from server
+            printf("Server told me--->: %s \n", buffer);
+        }
+        return 0;
+    }
+}
+
+void sendLogOn(char *myIP, int myPort, int server)
 {
     // ------------------------ LOG_ON---------------------
     char *message;
     message = malloc(BUFSIZ + 1);
-    sprintf(message, "LOG_ON < %s , %d >", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    sprintf(message, "LOG_ON < %s , %d >", myIP, myPort);
     send(server, message, strlen(message), 0);
     free(message);
 }
@@ -443,20 +360,6 @@ void sendLogOff(char *IP, int port, int server)
     free(message);
     close(server);
 }
-
-// char *strremove(char *str, const char *sub)
-// {
-//     size_t len = strlen(sub);
-//     if (len > 0)
-//     {
-//         char *p = str;
-//         while ((p = strstr(p, sub)) != NULL)
-//         {
-//             memmove(p, p + len, strlen(p + len) + 1);
-//         }
-//     }
-//     return str;
-// }
 
 // input str should be like this:
 // "CLIENT_LIST 3 < 123.23.2.2 , 20 > < 113.13.1.1 , 10 > < 111.23.2.2 , 15 > "
@@ -560,56 +463,7 @@ void insertInClientList(char *input)
     free(IP);
 }
 
-void findFiles(char *source, int indent, char **result, int *NumOfFiles)
-{
-    DIR *dir;
-    struct dirent *entry;
-    char path[1025];
-    struct stat info;
-    char *temp;
-    temp = malloc(60);
-    if ((dir = opendir(source)) == NULL)
-        perror("opendir() error");
-    else
-    {
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (entry->d_name[0] != '.')
-            {
-                strcpy(path, source);
-                strcat(path, "/");
-                strcat(path, entry->d_name);
-                if (stat(path, &info) != 0)
-                {
-                    fprintf(stderr, "stat() error on %s: %s\n", path, strerror(errno));
-                }
-                else if (S_ISDIR(info.st_mode))
-                {
-                    // it is a directory
-                    findFiles(path, indent + 1, result, NumOfFiles);
-                }
-                else if (S_ISREG(info.st_mode))
-                {
-                    // it is a file
-                    (*NumOfFiles) = (*NumOfFiles) + 1;
-                    char *version, *str1, *str2;
-                    str1 = malloc(BUFSIZ);
-                    str2 = malloc(60);
-                    version = malloc(33);
-                    strcpy(version, calculateMD5hash(path));
-                    sprintf(temp, "< %s , %s > ", path, version);
-                    strcpy(str1, *result);
-                    strcpy(str2, temp);
-                    appendString(result, str1, str2);
-                    free(version);
-                    free(str1);
-                    free(str2);
-                }
-            }
-        }
-        closedir(dir);
-    }
-}
+
 
 void sendFileList(char *dirName, int clientSocket)
 {
@@ -667,18 +521,6 @@ void sendFile(char *dirName, char *pathName, char *version, int socketSD)
     sendFileContents(fullPath, socketSD, versionNow);
 }
 
-long long countSize(char *filename)
-{
-    struct stat sb;
-    if (stat(filename, &sb) == -1)
-    {
-        perror("stat");
-        exit(1);
-    }
-
-    printf("File size: %lld bytes\n", (long long)sb.st_size);
-    return ((long long)sb.st_size);
-}
 
 void sendFileContents(char *pathName, int socketSD, char *version)
 {
@@ -717,43 +559,6 @@ void sendFileContents(char *pathName, int socketSD, char *version)
     fclose(fp);
 }
 
-char *calculateMD5hash(char *pathname)
-{
-    char *result;
-    char *fileWithHash;
-    char *temp;
-    char *command;
-    FILE *fp;
-    result = malloc(33);
-    temp = malloc(strlen(pathname) + 1);
-    fileWithHash = malloc(strlen(pathname) + 4);
-    strcpy(result, "");
-    // call the script to make the file with the hash then read it from there
-    sprintf(fileWithHash, "%s.md5", pathname);
-
-    command = malloc(1025);
-    sprintf(command, "md5sum %s > %s", pathname, fileWithHash);
-    system(command);
-    free(command);
-
-    // now that the file is ready with the checksum
-    // open the file and extract the hash
-
-    fp = fopen(fileWithHash, "r");
-    if (fp == NULL)
-    {
-        perror("fopen()");
-        exit(EXIT_FAILURE);
-    }
-
-    fscanf(fp, "%s %s", result, temp);
-
-    fclose(fp);
-    remove(fileWithHash);
-    free(temp);
-    free(fileWithHash);
-    return result;
-}
 
 void readFileList(char *source, char *IPsender, int portSender)
 {

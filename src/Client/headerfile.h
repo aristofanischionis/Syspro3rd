@@ -5,22 +5,20 @@
 int Initialisation(char *serverIP, int serverPort);
 void *threadsWork(void *args);
 void *Mainthread(void *args);
-void sendLogOn(struct sockaddr_in client_addr, int server);
+void sendLogOn(char *myIP, int myPort, int server);
 void sendGetClients(int server);
 void sendLogOff(char *IP, int port, int server);
 void tokenizeClientList(char *input);
 char *strremove(char *str, const char *sub);
 void deleteFromList(char *input);
 void insertInClientList(char *input);
-char *calculateMD5hash(char *pathname);
-void findFiles(char *source, int indent, char **result, int *NumOfFiles);
 void sendFileList(char *dirName, int clientSocket);
 void sendFileContents(char *pathName, int socketSD, char* version);
 void putRequestsInBuffer();
 void sendFile(char *dirName, char *pathName, char *version, int socketSD);
 void readFileList(char *source, char *IPsender, int portSender);
 void readFile(char *source, int socketSD, char *fullPath);
-long long countSize(char *filename);
+int read_from_client1(int socketD, char *dir);
 void terminating();
 
 struct args_MainThread

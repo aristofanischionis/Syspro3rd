@@ -10,16 +10,14 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "headerfile.h"
+#include "../HeaderFiles/Common.h"
 #include "../HeaderFiles/LinkedList.h"
 
 int logOn(Node **headList, char *buffer,char **IP, int *port)
 {
     char *IPaddr;
     int porta;
-    int i = 0;
-    int tempSD;
     char *message;
-    struct sockaddr_in client_addr;
     message = malloc(256);
     IPaddr = malloc(20);
     sscanf(buffer, "LOG_ON < %s , %d >", IPaddr, &porta);
@@ -68,7 +66,7 @@ void getClients(Node **headList, int sd, char *IP, int port)
 void logOff(Node **headList, char *buffer, int sd)
 {
     char *IP, *message;
-    int port, tempSD, i;
+    int port;
     IP = malloc(20);
     message = malloc(50);
     sscanf(buffer, "LOG_OFF < %s , %d >", IP, &port);

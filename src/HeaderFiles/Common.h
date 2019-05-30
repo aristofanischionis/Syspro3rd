@@ -1,5 +1,6 @@
 #ifndef COMMON_HEADER
 #define COMMON_HEADER
+#include <netdb.h>
 
 int bind_on_port(int sock, short port);
 void shutdown_properly(int code);
@@ -14,5 +15,9 @@ void checkIPbuffer(char *IPbuffer);
 int make_socket(char *myIP, int port);
 int connect_to_socket(char *myIP, int port);
 char *strremove(char *str, const char *sub);
+void findFiles(char *source, int indent, char **result, int *NumOfFiles);
+long long countSize(char *filename);
+char *calculateMD5hash(char *pathname);
+
 
 #endif

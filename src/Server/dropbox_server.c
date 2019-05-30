@@ -12,41 +12,11 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <errno.h>
+#include "../HeaderFiles/Common.h"
 #include "../HeaderFiles/LinkedList.h"
 #include "headerfile.h"
 
 Node *headList;
-
-// // Returns hostname for the local computer
-// void checkHostName(int hostname)
-// {
-//     if (hostname == -1)
-//     {
-//         perror("gethostname");
-//         exit(1);
-//     }
-// }
-
-// // Returns host information corresponding to host name
-// void checkHostEntry(struct hostent *hostentry)
-// {
-//     if (hostentry == NULL)
-//     {
-//         perror("gethostbyname");
-//         exit(1);
-//     }
-// }
-
-// // Converts space-delimited IPv4 addresses
-// // to dotted-decimal format
-// void checkIPbuffer(char *IPbuffer)
-// {
-//     if (NULL == IPbuffer)
-//     {
-//         perror("inet_ntoa");
-//         exit(1);
-//     }
-// }
 
 int read_from_client(int socketDescr)
 {
@@ -100,49 +70,6 @@ int read_from_client(int socketDescr)
     }
 }
 
-// int make_socket(char *myIP, int port)
-// {
-//     int socketD;
-//     int opt = 1;
-//     struct sockaddr_in sock_addr;
-//     sock_addr.sin_family = AF_INET;
-//     sock_addr.sin_addr.s_addr = inet_addr(myIP);
-//     sock_addr.sin_port = htons(port);
-//     if ((socketD = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-//     {
-//         perror("socket failed");
-//         exit(EXIT_FAILURE);
-//     }
-//     if (setsockopt(socketD, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
-//     {
-//         perror("setsockopt");
-//         exit(EXIT_FAILURE);
-//     }
-//     if (bind(socketD, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) < 0)
-//     {
-//         perror("bind failed");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     return socketD;
-// }
-
-// int connect_to_socket(char *myIP, int port)
-// {
-//     struct sockaddr_in sock_addr;
-//     int socketD = socket(AF_INET, SOCK_STREAM, 0);
-//     sock_addr.sin_family = AF_INET;
-//     sock_addr.sin_addr.s_addr = inet_addr(myIP);
-//     sock_addr.sin_port = htons(port);
-//     // connect
-//     int con = connect(socketD, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
-//     if (con == 0)
-//         printf("Client Connected\n");
-//     else
-//         printf("Error in Connection\n");
-
-//     return socketD;
-// }
 
 int main(int argc, char *argv[])
 {
@@ -176,7 +103,7 @@ int main(int argc, char *argv[])
     fd_set active_fd_set, read_fd_set;
     int i;
     struct sockaddr_in clientname;
-    size_t size;
+    socklen_t size;
 
     /* Create the socket and set it up to accept connections. */
     sock = make_socket(IPbuffer, port);

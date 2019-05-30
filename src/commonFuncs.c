@@ -1,17 +1,20 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <string.h>
-#include <ctype.h>
 #include <sys/un.h>
+#include <string.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <errno.h>
+#include <sys/wait.h>
+#include <dirent.h>
+#include <fcntl.h>
 #include "HeaderFiles/Common.h"
 
 int bind_on_port(int sock, short port)
@@ -28,12 +31,12 @@ void handle_signal_action(int sig_number)
 	if (sig_number == SIGINT)
 	{
 		printf("SIGINT was catched!\n");
-		shutdown_properly(EXIT_SUCCESS);
+		// shutdown_properly(EXIT_SUCCESS);
 	}
 	else if (sig_number == SIGPIPE)
 	{
 		printf("SIGPIPE was catched!\n");
-		shutdown_properly(EXIT_SUCCESS);
+		// shutdown_properly(EXIT_SUCCESS);
 	}
 }
 
@@ -145,14 +148,116 @@ int connect_to_socket(char *myIP, int port)
 
 char *strremove(char *str, const char *sub)
 {
-    size_t len = strlen(sub);
-    if (len > 0)
+	size_t len = strlen(sub);
+	if (len > 0)
+	{
+		char *p = str;
+		while ((p = strstr(p, sub)) != NULL)
+		{
+			memmove(p, p + len, strlen(p + len) + 1);
+		}
+	}
+	return str;
+}
+
+void findFiles(char *source, int indent, char **result, int *NumOfFiles)
+{
+	DIR *dir;
+	struct dirent *entry;
+	char path[1025];
+	struct stat info;
+	char *temp;
+	temp = malloc(60);
+	if ((dir = opendir(source)) == NULL)
+		perror("opendir() error");
+	else
+	{
+		while ((entry = readdir(dir)) != NULL)
+		{
+			if (entry->d_name[0] != '.')
+			{
+				strcpy(path, source);
+				strcat(path, "/");
+				strcat(path, entry->d_name);
+				if (stat(path, &info) != 0)
+				{
+					fprintf(stderr, "stat() error on %s: %s\n", path, strerror(errno));
+				}
+				else if (S_ISDIR(info.st_mode))
+				{
+					// it is a directory
+					findFiles(path, indent + 1, result, NumOfFiles);
+				}
+				else if (S_ISREG(info.st_mode))
+				{
+					// it is a file
+					(*NumOfFiles) = (*NumOfFiles) + 1;
+					char *version, *str1, *str2;
+					str1 = malloc(BUFSIZ);
+					str2 = malloc(60);
+					version = malloc(33);
+					strcpy(version, calculateMD5hash(path));
+					sprintf(temp, "< %s , %s > ", path, version);
+					strcpy(str1, *result);
+					strcpy(str2, temp);
+					appendString(result, str1, str2);
+					free(version);
+					free(str1);
+					free(str2);
+				}
+			}
+		}
+		closedir(dir);
+	}
+}
+
+long long countSize(char *filename)
+{
+    struct stat sb;
+    if (stat(filename, &sb) == -1)
     {
-        char *p = str;
-        while ((p = strstr(p, sub)) != NULL)
-        {
-            memmove(p, p + len, strlen(p + len) + 1);
-        }
+        perror("stat");
+        exit(1);
     }
-    return str;
+
+    printf("File size: %lld bytes\n", (long long)sb.st_size);
+    return ((long long)sb.st_size);
+}
+
+char *calculateMD5hash(char *pathname)
+{
+    char *result;
+    char *fileWithHash;
+    char *temp;
+    char *command;
+    FILE *fp;
+    result = malloc(33);
+    temp = malloc(strlen(pathname) + 1);
+    fileWithHash = malloc(strlen(pathname) + 4);
+    strcpy(result, "");
+    // call the script to make the file with the hash then read it from there
+    sprintf(fileWithHash, "%s.md5", pathname);
+
+    command = malloc(1025);
+    sprintf(command, "md5sum %s > %s", pathname, fileWithHash);
+    system(command);
+    free(command);
+
+    // now that the file is ready with the checksum
+    // open the file and extract the hash
+
+    fp = fopen(fileWithHash, "r");
+    if (fp == NULL)
+    {
+        perror("fopen()");
+        exit(EXIT_FAILURE);
+    }
+
+    fscanf(fp, "%s %s", result, temp);
+
+    fclose(fp);
+    remove(fileWithHash);
+    free(temp);
+    free(fileWithHash);
+    return result;
 }
