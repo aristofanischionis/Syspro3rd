@@ -34,43 +34,85 @@ void perror_exit(char *message)
     exit(EXIT_FAILURE);
 }
 
-// Returns hostname for the local computer 
-void checkHostName(int hostname) 
-{ 
-    if (hostname == -1) 
-    { 
-        perror("gethostname"); 
-        exit(1); 
-    } 
-} 
-  
-// Returns host information corresponding to host name 
-void checkHostEntry(struct hostent * hostentry) 
-{ 
-    if (hostentry == NULL) 
-    { 
-        perror("gethostbyname"); 
-        exit(1); 
-    } 
-} 
-  
-// Converts space-delimited IPv4 addresses 
-// to dotted-decimal format 
-void checkIPbuffer(char *IPbuffer) 
-{ 
-    if (NULL == IPbuffer) 
-    { 
-        perror("inet_ntoa"); 
-        exit(1); 
-    } 
-} 
+// Returns hostname for the local computer
+void checkHostName(int hostname)
+{
+    if (hostname == -1)
+    {
+        perror("gethostname");
+        exit(1);
+    }
+}
+
+// Returns host information corresponding to host name
+void checkHostEntry(struct hostent *hostentry)
+{
+    if (hostentry == NULL)
+    {
+        perror("gethostbyname");
+        exit(1);
+    }
+}
+
+// Converts space-delimited IPv4 addresses
+// to dotted-decimal format
+void checkIPbuffer(char *IPbuffer)
+{
+    if (NULL == IPbuffer)
+    {
+        perror("inet_ntoa");
+        exit(1);
+    }
+}
+
+int read_from_client(int filedes)
+{
+    char buffer[BUFSIZ];
+    int nbytes;
+
+    nbytes = read(filedes, buffer, BUFSIZ);
+    if (nbytes < 0)
+    {
+        /* Read error. */
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+    else if (nbytes == 0)
+        /* End-of-file. */
+        return -1;
+    else
+    {
+        /* Data read. */
+        fprintf(stderr, "Server: got message: '%s'\n", buffer);
+        if (strstr(buffer, "LOG_ON") != NULL)
+        {
+            int cliSocket;
+            char *IP = malloc(25);
+            strcpy(IP, "");
+            int port = 0;
+            cliSocket = logOn(&headList, buffer, sd, max_clients, &client_socket, &max_sd, readfds, &IP, &port);
+        }
+        else if (!strcmp(buffer, "GET_CLIENTS"))
+        {
+            getClients(&headList, cliSocket, IP, port);
+        }
+
+        else if (!strcmp(buffer, "LOG_OFF"))
+        {
+            printf("buffer --> %s\n", buffer);
+            // logOff(&headList, buffer, cliSocket, max_clients, client_socket);
+        }
+        else
+        {
+            printf("I read something else: %s \n", buffer);
+        }
+        return 0;
+    }
+}
 
 int main(int argc, char *argv[])
 {
     Node *headList = NULL;
-    char *localhost;
-    localhost = malloc(20);
-    strcpy(localhost, "127.0.0.1");
     int port = 0;
     if (argc != 3)
     {
@@ -78,9 +120,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     port = atoi(argv[2]);
-    // char *message;
-    // message = malloc(256);
-    // select
+
     int opt = 1;
     int *client_socket;
     client_socket = malloc(30 * sizeof(int));
@@ -90,206 +130,81 @@ int main(int argc, char *argv[])
     struct sockaddr_in address;
     char *buffer; //data buffer of 1K
     buffer = malloc(BUFSIZ + 1);
-    char hostbuffer[256]; 
-    char *IPbuffer; 
-    struct hostent *host_entry; 
-    int hostname; 
-    // To retrieve hostname 
-    hostname = gethostname(hostbuffer, sizeof(hostbuffer)); 
-    checkHostName(hostname); 
-  
-    // To retrieve host information 
-    host_entry = gethostbyname(hostbuffer); 
-    checkHostEntry(host_entry); 
-  
-    // To convert an Internet network 
-    // address into ASCII string 
-    IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0])); 
+    char hostbuffer[256];
+    char *IPbuffer;
+    struct hostent *host_entry;
+    int hostname;
+    // To retrieve hostname
+    hostname = gethostname(hostbuffer, sizeof(hostbuffer));
+    checkHostName(hostname);
 
-    //set of socket descriptors
-    fd_set readfds;
-    //initialise all client_socket[] to 0 so not checked
-    for (i = 0; i < max_clients; i++)
-    {
-        client_socket[i] = 0;
-    }
+    // To retrieve host information
+    host_entry = gethostbyname(hostbuffer);
+    checkHostEntry(host_entry);
 
-    //create a master socket
-    if ((master_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
+    // To convert an Internet network
+    // address into ASCII string
+    IPbuffer = inet_ntoa(*((struct in_addr *)host_entry->h_addr_list[0]));
+    int sock;
+    fd_set active_fd_set, read_fd_set;
+    int i;
+    struct sockaddr_in clientname;
+    size_t size;
 
-    //set master socket to allow multiple connections ,
-    //this is just a good habit, it will work without this
-    if (setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
-    {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-    
-    //type of socket created
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr(IPbuffer);
-    address.sin_port = htons(port);
-
-    //bind the socket to localhost port 8888
-    if (bind(master_socket, (struct sockaddr *)&address, sizeof(address)) < 0)
-    {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
-    printf("Listener on IP: %s, port %d \n", IPbuffer, port);
-
-    //try to specify maximum of 3 pending connections for the master socket
-    if (listen(master_socket, 3) < 0)
+    /* Create the socket and set it up to accept connections. */
+    sock = make_socket(port);
+    if (listen(sock, 1) < 0)
     {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    //accept the incoming connection
-    addrlen = sizeof(address);
-    printf("Waiting for connections...");
+
+    /* Initialize the set of active sockets. */
+    FD_ZERO(&active_fd_set);
+    FD_SET(sock, &active_fd_set);
+
     while (1)
     {
-        //clear the socket set
-        FD_ZERO(&readfds);
-        //add master socket to set
-        FD_SET(master_socket, &readfds);
-        max_sd = master_socket;
-        //add child sockets to set
-        for (i = 0; i < max_clients; i++)
+        /* Block until input arrives on one or more active sockets. */
+        read_fd_set = active_fd_set;
+        if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0)
         {
-            //socket descriptor
-            sd = client_socket[i];
-
-            //if valid socket descriptor then add to read list
-            if (sd > 0)
-                FD_SET(sd, &readfds);
-
-            //highest file descriptor number, need it for the select function
-            if (sd > max_sd)
-                max_sd = sd;
+            perror("select");
+            exit(EXIT_FAILURE);
         }
 
-        //wait for an activity on one of the sockets , timeout is NULL ,
-        //so wait indefinitely
-        activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-
-        if ((activity < 0) && (errno != EINTR))
-        {
-            printf("select error");
-        }
-
-        //If something happened on the master socket ,
-        //then its an incoming connection
-        if (FD_ISSET(master_socket, &readfds))
-        {
-            if ((new_socket = accept(master_socket, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
+        /* Service all the sockets with input pending. */
+        for (i = 0; i < FD_SETSIZE; ++i)
+            if (FD_ISSET(i, &read_fd_set))
             {
-                perror("accept");
-                exit(EXIT_FAILURE);
-            }
-
-            //inform user of socket number - used in send and receive commands
-            printf("New connection , socket fd is %d , ip is : %s , port : %d\n ", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-
-            //send new connection greeting message
-            // sprintf(message, "Welcome client with id %d\n", new_socket);
-            // if (send(new_socket, message, strlen(message), 0) != strlen(message))
-            // {
-            //     perror("send");
-            // }
-
-            // puts("Welcome message sent successfully");
-
-            //add new socket to array of sockets
-            for (i = 0; i < max_clients; i++)
-            {
-                //if position is empty
-                if (client_socket[i] == 0)
+                if (i == sock)
                 {
-                    client_socket[i] = new_socket;
-                    printf("Adding to list of sockets as %d\n", i);
-                    break;
-                }
-            }
-        }
-        //else its some IO operation on some other socket
-        // -------------------------------> mpalitsa
-        for (i = 0; i < max_clients; i++)
-        {
-            sd = client_socket[i];
-
-            if (FD_ISSET(sd, &readfds))
-            {
-                //Check if it was for closing , and also read the
-                //incoming message
-                if ((valread = read(sd, buffer, 1024)) == 0)
-                {
-                    //Somebody disconnected , get his details and print
-                    getpeername(sd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
-                    printf("Host disconnected , ip %s , port %d \n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-
-                    //Close the socket and mark as 0 in list for reuse
-                    close(sd);
-                    client_socket[i] = 0;
+                    /* Connection request on original socket. */
+                    int new;
+                    size = sizeof(clientname);
+                    new = accept(sock,
+                                 (struct sockaddr *)&clientname,
+                                 &size);
+                    if (new < 0)
+                    {
+                        perror("accept");
+                        exit(EXIT_FAILURE);
+                    }
+                    fprintf(stderr,
+                            "Server: connect from host %s, port %hd.\n",
+                            inet_ntoa(clientname.sin_addr),
+                            ntohs(clientname.sin_port));
+                    FD_SET(new, &active_fd_set);
                 }
                 else
                 {
-                    //set the string terminating NULL byte on the end
-                    //of the data read
-                    buffer[valread] = '\0';
-                    // send(sd, buffer, strlen(buffer), 0);
-                    if (strstr(buffer, "LOG_ON") != NULL)
+                    /* Data arriving on an already-connected socket. */
+                    if (read_from_client(i) < 0)
                     {
-                        int cliSocket;
-                        char * IP = malloc(25);
-                        strcpy(IP, "");
-                        int port = 0;
-                        cliSocket = logOn(&headList, buffer, sd, max_clients, &client_socket, &max_sd, readfds, &IP, &port);
-                        recv(sd, buffer, 1024, 0);
-                        printf("buffer -------> %s\n", buffer);
-                        if(!strcmp(buffer, "GET_CLIENTS")){
-                            getClients(&headList, cliSocket, IP, port); 
-                            // free(IP);
-
-                            
-                            // recv(sd, buffer, 1024, 0);
-                            // if(strstr(buffer, "LOG_OFF") != NULL){
-                            //     logOff(&headList, buffer, cliSocket, max_clients, client_socket);
-                            //     recv(sd, buffer, 1024, 0);
-                            //     printf("1buffer read --> %s\n", buffer);
-                            // }
-                            // else {
-                            //     printf("2buffer read --> %s\n", buffer);
-                            // }
-                        }
-                        else{
-                            printf("3buffer read --> %s\n", buffer);
-                        }
+                        close(i);
+                        FD_CLR(i, &active_fd_set);
                     }
-                    // else if (!strcmp(buffer, "GET_CLIENTS"))
-                    // {
-                    //     // getClients(&headList, sd, IP, port);
-                    // }
-                    else if (!strcmp(buffer, "LOG_OFF"))
-                    {
-                        printf("buffer --> %s\n", buffer);
-                        // logOff(&headList, buffer, cliSocket, max_clients, client_socket);
-                    }
-                    else {
-                        printf("I read something else: %s \n", buffer);
-                    }
-
-
                 }
             }
-
-            // ->>>>>>>>>>>>>>>>
-        }
-
     }
-    return 0;
 }

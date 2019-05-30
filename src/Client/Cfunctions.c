@@ -293,7 +293,7 @@ void *Mainthread(void *args)
             }
 
             //inform user of socket number - used in send and receive commands
-            printf("New connection , socket fd is %d , ip is : %s , port : %d\n ", new_socket, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            printf("New connection , socket fd is %d , ip is : %s , port : %d\n ", new_socket, clientIP, arguments->clientPort);
             //add new socket to array of sockets
             for (i = 0; i < max_clients; i++)
             {
