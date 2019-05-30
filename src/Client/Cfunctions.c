@@ -51,36 +51,36 @@ void *threadsWork(void *args)
     struct args_Workers *arguments;
     arguments = (struct args_Workers *)args;
     buffer_entry temp;
+    int sock = 0;
+    struct sockaddr_in client_addr;
+    char *buffer;
+    char *request = malloc(BUFSIZ);
+    buffer = malloc(BUFSIZ);
     while (1)
     {
         temp = retrieve();
         pthread_cond_signal(&cond_nonfull);
+        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        {
+            printf("\n Socket creation error \n");
+            pthread_exit(0);
+        }
+
+        memset(&client_addr, '0', sizeof(client_addr));
+        client_addr.sin_family = AF_INET;
+        client_addr.sin_addr.s_addr = inet_addr(temp.IPaddress);
+        client_addr.sin_port = htons(temp.portNum);
+
+        if (connect(sock, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0)
+        {
+            printf("\nConnection Failed \n");
+            pthread_exit(0);
+        }
+        // begin doing things
         if (!strcmp(temp.pathname, "-1"))
         {
             // then it is not a file i should send a get file list
             //
-            int sock = 0;
-            struct sockaddr_in client_addr;
-            char *buffer;
-            buffer = malloc(BUFSIZ);
-
-            if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-            {
-                printf("\n Socket creation error \n");
-                pthread_exit(0);
-            }
-
-            memset(&client_addr, '0', sizeof(client_addr));
-            client_addr.sin_family = AF_INET;
-            client_addr.sin_addr.s_addr = inet_addr(temp.IPaddress);
-            client_addr.sin_port = htons(temp.portNum);
-
-            if (connect(sock, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0)
-            {
-                printf("\nConnection Failed \n");
-                pthread_exit(0);
-            }
-
             send(sock, "GET_FILE_LIST", 15, 0);
             recv(sock, buffer, 1024, 0);
             close(sock);
@@ -111,10 +111,47 @@ void *threadsWork(void *args)
             else if (S_ISREG(info.st_mode))
             {
                 // it is a file
-                
+                // send the local version
+                char *version = malloc(33);
+                strcpy(version, calculateMD5hash(temp.pathname));
+                sprintf(request, "GET_FILE < %s , %s >", temp.pathname, version);
+                send(sock, request, strlen(request) + 1, 0);
+                recv(sock, buffer, BUFSIZ, 0);
+                // now I have the response in buffer
+                if (!strcmp(buffer, "FILE_UP_TO_DATE"))
+                {
+                    //file up to date don't do anything
+                }
+                else{
+                    // not up to date
+                    printf("File not up to date");
+                    // 001 means file exists but not up to date
+                    sprintf(request, "GET_FILE < %s , 001 >", temp.pathname);
+                    send(sock, request, strlen(request) + 1, 0);
+                    recv(sock, buffer, BUFSIZ, 0);
+                    // receive all the info to put the contents in the file
+                    readFile(buffer, sock, fullPath);
+                }
+                close(sock);
+                free(version);
             }
-            else{
-                // not exists
+            else
+            {
+                // not exists so i have to create it
+                // 000 means it doesn't exist
+                sprintf(request, "GET_FILE < %s , 000 >", temp.pathname);
+                send(sock, request, strlen(request) + 1, 0);
+                recv(sock, buffer, BUFSIZ, 0);
+                // now I have received the first part of a receive file operation
+                // create the file fullPath
+                char *command = malloc(BUFSIZ);
+                sprintf(command, "./createFileDirs.sh %s", fullPath);
+                system(command);
+                free(command);
+                // receive all the info to put the contents in the file
+                readFile(buffer, sock, fullPath);
+
+                close(sock);
             }
 
             free(fullPath);
