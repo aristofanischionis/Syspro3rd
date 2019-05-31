@@ -125,6 +125,7 @@ void *threadsWork(void *args)
                 char *version = malloc(33);
                 // this is the fiile starting with 127. ....
                 char* backupPath = malloc(1025);
+
                 sprintf(backupPath, "%s_%d/%s", temp.IPaddress, temp.portNum, temp.pathname);
                 strcpy(version, calculateMD5hash(backupPath));
                 strcpy(temp.version, version);
@@ -574,7 +575,7 @@ void readFileList(char *source, char *IPsender, int portSender)
         strcpy(temp.pathname, pathName);
         strcpy(temp.version, version);
         temp.portNum = portSender;
-
+        printf("-------------> %d %s \n", temp.portNum, temp.pathname);
         put(temp);
         pthread_cond_signal(&cond_nonempty);
         sprintf(tobeRemov, "< %s , %s > ", pathName, version);
