@@ -26,7 +26,7 @@ void logOn(Node **headList, char *buffer)
     int tempClientSD;
     // now I have to send to all users in the list a message USER_ON
     sprintf(message, "USER_ON < %s , %d >", IPaddr, porta);
-    printf("My message is : %s", message);
+    // printf("My message is : %s", message);
     send(client, "WELCOME", 8, 0);
     // close(client);
     // send it to all others

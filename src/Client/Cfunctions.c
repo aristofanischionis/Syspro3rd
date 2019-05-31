@@ -31,6 +31,7 @@ extern pthread_cond_t cond_nonfull;
 char *clientIP;
 // int port, server;
 Node *ClientsListHead;
+#define MAX_FILE_SIZE 128000
 
 void terminating()
 {
@@ -42,8 +43,8 @@ void terminating()
 
 void *threadsWork(void *args)
 {
-    printf("--------------------> threads work \n");
-    fflush(stdout);
+    // printf("--------------------> threads work \n");
+    // fflush(stdout);
     struct args_Workers *arguments;
     arguments = (struct args_Workers *)args;
     buffer_entry temp;
@@ -54,7 +55,7 @@ void *threadsWork(void *args)
     buffer = malloc(BUFSIZ);
     while (1)
     {
-        printf("threads in while loopa \n");
+        // printf("threads in while loopa \n");
         temp = retrieve();
         pthread_cond_signal(&cond_nonfull);
         
@@ -67,7 +68,7 @@ void *threadsWork(void *args)
             printf("Sending get file list \n");
             send(sock, "GET_FILE_LIST", 15, 0);
             recv(sock, buffer, 1024, 0);
-            close(sock);
+            // close(sock);
             printf("buffer is -> %s \n", buffer);
             // insert in buffer
             readFileList(buffer, temp.IPaddress, temp.portNum);
@@ -86,7 +87,7 @@ void *threadsWork(void *args)
             char *fullPath = malloc(BUFSIZ);
             struct stat info;
             sprintf(fullPath, "%s_%d/%s", temp.IPaddress, temp.portNum, temp.pathname);
-            printf("the name of the file is %s \n", fullPath);
+            // printf("the name of the file is %s \n", fullPath);
             if (stat(fullPath, &info) != 0)
             {
                 // fprintf(stderr, "stat() error on %s: %s\n", fullPath, strerror(errno));
@@ -109,21 +110,25 @@ void *threadsWork(void *args)
                 }
                 
                 sprintf(command, "%s %s", buf,fullPath);
-                printf("About to create file \n");
                 system(command);
                 free(command);
                 // receive all the info to put the contents in the file
                 readFile(buffer, sock, fullPath);
 
-                close(sock);
+                // close(sock);
             }
             else if (S_ISREG(info.st_mode))
             {
                 // it is a file
                 // send the local version
-                printf("file existss in backup\n");
+                printf("file exists in backup\n");
                 char *version = malloc(33);
-                strcpy(version, calculateMD5hash(temp.pathname));
+                // this is the fiile starting with 127. ....
+                char* backupPath = malloc(1025);
+                sprintf(backupPath, "%s_%d/%s", temp.IPaddress, temp.portNum, temp.pathname);
+                strcpy(version, calculateMD5hash(backupPath));
+                strcpy(temp.version, version);
+                free(backupPath);
                 sprintf(request, "GET_FILE < %s , %s >", temp.pathname, version);
                 send(sock, request, strlen(request) + 1, 0);
                 recv(sock, buffer, BUFSIZ, 0);
@@ -136,7 +141,7 @@ void *threadsWork(void *args)
                 else
                 {
                     // not up to date
-                    printf("File not up to date");
+                    printf("File not up to date\n");
                     // 001 means file exists but not up to date
                     sprintf(request, "GET_FILE < %s , 001 >", temp.pathname);
                     send(sock, request, strlen(request) + 1, 0);
@@ -144,33 +149,21 @@ void *threadsWork(void *args)
                     // receive all the info to put the contents in the file
                     readFile(buffer, sock, fullPath);
                 }
-                close(sock);
+                // close(sock);
                 free(version);
             }
             else
             {
                 // not exists so i have to create it
                 // 000 means it doesn't exist
-                printf("Im in else case \n");
-                sprintf(request, "GET_FILE < %s , 000 >", temp.pathname);
-                send(sock, request, strlen(request) + 1, 0);
-                recv(sock, buffer, BUFSIZ, 0);
-                // now I have received the first part of a receive file operation
-                // create the file fullPath
-                char *command = malloc(BUFSIZ);
-                sprintf(command, "./createFileDirs.sh %s", fullPath);
-                system(command);
-                free(command);
-                // receive all the info to put the contents in the file
-                readFile(buffer, sock, fullPath);
-
-                close(sock);
+                printf("weird things happen \n");
+                pthread_exit(NULL);
             }
-
             free(fullPath);
         }
+        close(sock);
+        sock = -1;
     }
-
     pthread_exit(0);
 }
 
@@ -286,19 +279,17 @@ int read_from_client1(int socketD, char *dir)
         fprintf(stderr, "Client: got message: '%s'\n", buffer);
         if (!strcmp(buffer, "GET_FILE_LIST"))
         {
-            printf("received get file list ... \n");
             sendFileList(dir, socketD);
         }
         else if (strstr(buffer, "GET_FILE") != NULL)
         {
-            printf("received get file ... \n");
             char *version;
             char *path;
             version = malloc(33);
             path = malloc(BUFSIZ);
             // get the filename and version
             sscanf(buffer, "GET_FILE < %s , %s >", path, version);
-            sendFile(dir, path, version, socketD);
+            sendFile(path, version, socketD);
             free(path);
             free(version);
         }
@@ -310,41 +301,18 @@ int read_from_client1(int socketD, char *dir)
         else if (strstr(buffer, "CLIENT_LIST") != NULL)
         {
             // tokenize it and push it in to list with mutexes
-            printf("received client list.. %s\n", buffer);
             tokenizeClientList(buffer);
-            printf("received client list after tokenize...\n");
-
             // now I have all of the clients in my list
             // put the requests in the buffer for all the entries in my list
             putRequestsInBuffer();
-            printf("I put the clients in the buffer items: %d \n", myBuffer.count);
         }
         else if (!strcmp(buffer, "WELCOME"))
         {
-            printf("sending get clients..\n");
             sendGetClients(socketD);
         }
         else if (strstr(buffer, "USER_ON") != NULL)
         {
-            printf("I received info, user on %s\n", buffer);
             insertInClientList(buffer);
-            printf("I am after user on buffer items : %d\n", myBuffer.count);
-        }
-        else if (strstr(buffer, "FILE_LIST") != NULL)
-        {
-            printf("I received %s\n", buffer);
-        }
-        else if (strstr(buffer, "FILE_SIZE") != NULL)
-        {
-            printf("I received %s\n", buffer);
-        }
-        else if (!strcmp(buffer, "FILE_UP_TO_DATE"))
-        {
-            printf("I received %s\n", buffer);
-        }
-        else if (!strcmp(buffer, "FILE_NOT_FOUND"))
-        {
-            printf("I received %s\n", buffer);
         }
         else
         {
@@ -384,7 +352,7 @@ void sendLogOff(char *IP, int port, int server)
     printf("eimai o client-------> message: %s \n", message);
     send(server, message, strlen(message), 0);
     free(message);
-    close(server);
+    // close(server);
 }
 
 // input str should be like this:
@@ -504,24 +472,22 @@ void sendFileList(char *dirName, int clientSocket)
     strcpy(str2, temp);
     appendString(&result, str1, str2);
 
-    printf("my filelist to send is-----------> %s \n", result);
+    // printf("my filelist to send is-----------> %s \n", result);
     // so now just send this final result to the other
     send(clientSocket, result, strlen(result), 0);
-    close(clientSocket);
+    // close(clientSocket);
     free(str1);
     free(str2);
     free(temp);
     free(result);
 }
 
-void sendFile(char *dirName, char *pathName, char *version, int socketSD)
+void sendFile(char *pathName, char *version, int socketSD)
 {
-    char *versionNow, *fullPath;
+    char *versionNow;
     versionNow = malloc(33);
-    fullPath = malloc(BUFSIZ);
     struct stat info;
-    appendString(&fullPath, dirName, pathName);
-    if (stat(fullPath, &info) != 0)
+    if (stat(pathName, &info) != 0)
     {
         // there is not a file
         send(socketSD, "FILE_NOT_FOUND", 16, 0);
@@ -533,7 +499,7 @@ void sendFile(char *dirName, char *pathName, char *version, int socketSD)
         return;
     }
     // there is a file
-    strcpy(versionNow, calculateMD5hash(fullPath));
+    strcpy(versionNow, calculateMD5hash(pathName));
     if (!strcmp(versionNow, version))
     {
         // same version
@@ -542,7 +508,7 @@ void sendFile(char *dirName, char *pathName, char *version, int socketSD)
     }
     // different one
     // so send all of its contents in chuncks of BUFSIZ
-    sendFileContents(fullPath, socketSD, versionNow);
+    sendFileContents(pathName, socketSD, versionNow);
 }
 
 
@@ -550,10 +516,8 @@ void sendFileContents(char *pathName, int socketSD, char *version)
 {
     FILE *fp;
     long long size;
-    size_t bytesRead = 0;
-    char *result;
-    result = malloc(BUFSIZ + 1);
-    strcpy(result, "");
+    char* result;
+    result = malloc(MAX_FILE_SIZE + 50);
     // open file
     fp = fopen(pathName, "r");
     if (fp == NULL)
@@ -564,23 +528,18 @@ void sendFileContents(char *pathName, int socketSD, char *version)
     // count size
     size = countSize(pathName);
     //
-    sprintf(result, "FILE_SIZE %s %lld ", version, size);
-    send(socketSD, result, strlen(result), 0);
-
-    // read BUFSIZ and send and then again till it is done
-    strcpy(result, "");
-    bytesRead = fread(result, BUFSIZ, 1, fp);
-    // read the first chunk
-    while (bytesRead > 0)
-    {
-        send(socketSD, result, strlen(result), 0);
-
-        strcpy(result, "");
-        bytesRead = fread(result, BUFSIZ, 1, fp);
-    }
-
-    close(socketSD);
+    char *toBeRead;
+    toBeRead = malloc(size + 1);
+    strcpy(toBeRead, "");
+    fread(toBeRead, (int)size, 1, fp);
     fclose(fp);
+    
+    sprintf(result, "FILE_SIZE %s %d %s", version, (int)size, toBeRead);
+    // printf("--> %s \n", result);
+    send(socketSD, result, strlen(result)+1, 0);
+
+    free(result);
+    free(toBeRead);
 }
 
 
@@ -633,36 +592,40 @@ void readFile(char *source, int socketSD, char *fullPath)
     FILE *fp;
     char *sourceStr;
     char *tobeRemov;
-    char *chunk;
+    // char *chunk;
     char *version;
+    char *data;
+    data = malloc(MAX_FILE_SIZE);
     int bytes = 0;
-    int times = 0;
+    // int times = 0;
     sourceStr = malloc(strlen(source) + 1);
     tobeRemov = malloc(50);
     version = malloc(33);
-    chunk = malloc(BUFSIZ + 1);
+    // chunk = malloc(BUFSIZ + 1);
     strcpy(sourceStr, source);
-    sscanf(sourceStr, "FILE_SIZE %s %d ", version, &bytes);
-    times = bytes / BUFSIZ + 1;
+    sscanf(sourceStr, "FILE_SIZE %s %d", version, &bytes);
+    // times = bytes / BUFSIZ + 1;
     fp = fopen(fullPath, "w");
     if (fp == NULL)
     {
         fprintf(stderr, "error in opening file readfile\n");
         exit(EXIT_FAILURE);
     }
+    // take all the info from sourcestr
+    sprintf(tobeRemov, "FILE_SIZE %s %d ",  version, bytes);
+    sourceStr = strremove(sourceStr, tobeRemov);
+    // now sourcestr has only the data
+    strcpy(data, sourceStr);
 
-    for (int i = 0; i < times; i++)
-    {
-        strcpy(chunk, "");
-        recv(socketSD, chunk, BUFSIZ, 0);
-        // so now I have part of the file's
-        fwrite(chunk, 1, sizeof(chunk), fp);
-    }
+    // printf("----------->I will write %s to %s \n", data, fullPath);
+    fwrite(data, 1, strlen(data), fp);
+    
 
     fclose(fp);
-    close(socketSD);
+    // close(socketSD);
     free(sourceStr);
-    free(tobeRemov);
+    // free(tobeRemov);
     free(version);
-    free(chunk);
+    free(data);
+    // free(chunk);
 }

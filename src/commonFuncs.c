@@ -223,7 +223,7 @@ long long countSize(char *filename)
         exit(1);
     }
 
-    printf("File size: %lld bytes\n", (long long)sb.st_size);
+    // printf("File size: %lld bytes\n", (long long)sb.st_size);
     return ((long long)sb.st_size);
 }
 

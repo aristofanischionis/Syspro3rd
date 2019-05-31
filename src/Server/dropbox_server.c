@@ -40,13 +40,13 @@ int read_from_client(int socketDescr)
         fprintf(stderr, "Server: got message: '%s'\n", buffer);
         if (strstr(buffer, "LOG_ON") != NULL)
         {
-            printf("I am going to deal with log on and get clients now\n");
+            // printf("I am going to deal with log on and get clients now\n");
             logOn(&headList, buffer);
         }
         
         else if (!strcmp(buffer, "LOG_OFF"))
         {
-            printf("buffer --> %s\n", buffer);
+            // printf("buffer --> %s\n", buffer);
             logOff(&headList, buffer, socketDescr);
         }
         else
