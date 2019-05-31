@@ -13,24 +13,20 @@
 #include "../HeaderFiles/Common.h"
 #include "../HeaderFiles/LinkedList.h"
 
-int logOn(Node **headList, char *buffer,char **IP, int *port)
+void logOn(Node **headList, char *buffer)
 {
     char *IPaddr;
     int porta;
     char *message;
-    message = malloc(256);
+    message = malloc(BUFSIZ+1);
     IPaddr = malloc(20);
     sscanf(buffer, "LOG_ON < %s , %d >", IPaddr, &porta);
-    // printf("Server read at log on %s, %d\n", IPaddr, porta);
-
-    strcpy(*IP, IPaddr);
-    *port = porta;
     
     int client = connect_to_socket(IPaddr, porta);
     int tempClientSD;
     // now I have to send to all users in the list a message USER_ON
     sprintf(message, "USER_ON < %s , %d >", IPaddr, porta);
-    // printf("My message is : %s", message);
+    printf("My message is : %s", message);
     send(client, "WELCOME", 8, 0);
     // close(client);
     // send it to all others
@@ -47,7 +43,16 @@ int logOn(Node **headList, char *buffer,char **IP, int *port)
     // now that I have a a new client update list
     // push it in the list, if t doesn't exist
     push(headList, IPaddr, porta);
-    return client;
+
+    recv(client, message, BUFSIZ, 0);
+    if (!strcmp(message, "GET_CLIENTS"))
+    {
+        getClients(headList, client, IPaddr, porta);
+    }
+    else
+    {
+        fprintf(stderr, "something went wrong in receiving getclients\n");
+    }
 }
 
 void getClients(Node **headList, int sd, char *IP, int port)

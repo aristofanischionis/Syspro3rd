@@ -15,6 +15,10 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <ctype.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include "headerfile.h"
 #include "../HeaderFiles/Common.h"
 #include "../HeaderFiles/LinkedList.h"
@@ -25,13 +29,13 @@ Buffer myBuffer;
 extern pthread_cond_t cond_nonempty;
 extern pthread_cond_t cond_nonfull;
 char *clientIP;
-int port, server;
+// int port, server;
 Node *ClientsListHead;
 
 void terminating()
 {
     printf("terminating-------------->\n");
-    sendLogOff(clientIP, port, server);
+    // sendLogOff(clientIP, port, server);
     pthread_exit(NULL);
     exit(0);
 }
@@ -52,29 +56,14 @@ void *threadsWork(void *args)
     {
         temp = retrieve();
         pthread_cond_signal(&cond_nonfull);
-        // if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        // {
-        //     printf("\n Socket creation error \n");
-        //     pthread_exit(0);
-        // }
-
-        // memset(&client_addr, '0', sizeof(client_addr));
-
-        // client_addr.sin_family = AF_INET;
-        // client_addr.sin_addr.s_addr = inet_addr(temp.IPaddress);
-        // client_addr.sin_port = htons(temp.portNum);
-
-        // if (connect(sock, (struct sockaddr *)&client_addr, sizeof(client_addr)) < 0)
-        // {
-        //     printf("\nConnection Failed \n");
-        //     pthread_exit(0);
-        // }
+        
         sock = connect_to_socket(temp.IPaddress, temp.portNum);
         // begin doing things
         if (!strcmp(temp.pathname, "-1"))
         {
             // then it is not a file i should send a get file list
             //
+            printf("Sending get file list \n");
             send(sock, "GET_FILE_LIST", 15, 0);
             recv(sock, buffer, 1024, 0);
             close(sock);
@@ -84,6 +73,7 @@ void *threadsWork(void *args)
         }
         else
         {
+            printf("Sending get file \n");
             pthread_mutex_lock(&mutexList);
             // it is a file
             if (exists(&ClientsListHead, temp.IPaddress, temp.portNum) == 0)
@@ -98,13 +88,38 @@ void *threadsWork(void *args)
             printf("the name of the file is %s \n", fullPath);
             if (stat(fullPath, &info) != 0)
             {
-                fprintf(stderr, "stat() error on %s: %s\n", fullPath, strerror(errno));
-                pthread_exit(NULL);
+                // fprintf(stderr, "stat() error on %s: %s\n", fullPath, strerror(errno));
+                // pthread_exit(NULL);
+                printf("File doesn't exist! \n");
+                // not exists so i have to create it
+                // 000 means it doesn't exist
+                sprintf(request, "GET_FILE < %s , 000 >", temp.pathname);
+                send(sock, request, strlen(request) + 1, 0);
+                recv(sock, buffer, BUFSIZ, 0);
+                // now I have received the first part of a receive file operation
+                // create the file fullPath
+                char *command = malloc(BUFSIZ+1);
+                char buf[BUFSIZ + 1];
+                char *res = realpath("./createFileDirs.sh", buf);
+                if (!res) {
+                    // printf("This source is at %s.\n", buf);
+                    perror("realpath");
+                    pthread_exit(NULL);
+                }
+                
+                sprintf(command, "%s %s", buf,fullPath);
+                system(command);
+                free(command);
+                // receive all the info to put the contents in the file
+                readFile(buffer, sock, fullPath);
+
+                close(sock);
             }
             else if (S_ISREG(info.st_mode))
             {
                 // it is a file
                 // send the local version
+                printf("file existss in backup\n");
                 char *version = malloc(33);
                 strcpy(version, calculateMD5hash(temp.pathname));
                 sprintf(request, "GET_FILE < %s , %s >", temp.pathname, version);
@@ -134,6 +149,7 @@ void *threadsWork(void *args)
             {
                 // not exists so i have to create it
                 // 000 means it doesn't exist
+                printf("Im in else case \n");
                 sprintf(request, "GET_FILE < %s , 000 >", temp.pathname);
                 send(sock, request, strlen(request) + 1, 0);
                 recv(sock, buffer, BUFSIZ, 0);
@@ -160,8 +176,9 @@ void *Mainthread(void *args)
 {
     fd_set active_fd_set, read_fd_set;
     int i;
+    int server;
     struct sockaddr_in clientname;
-    socklen_t size;
+    size_t size;
     struct args_MainThread *arguments;
     pthread_mutex_init(&mutexList, NULL);
     ClientsListHead = NULL;
@@ -170,20 +187,21 @@ void *Mainthread(void *args)
 
     server = connect_to_socket(arguments->serverIP, arguments->serverPort);
 
-    port = arguments->clientPort;
+    // port = arguments->clientPort;
     // signal(SIGINT, terminating);
     strcpy(clientIP, arguments->myIP);
-    struct sigaction a;
-    a.sa_handler = terminating;
-    a.sa_flags = 0;
-    sigemptyset(&a.sa_mask);
-    sigaction(SIGINT, &a, NULL);
+    // struct sigaction a;
+    // a.sa_handler = terminating;
+    // a.sa_flags = 0;
+    // sigemptyset(&a.sa_mask);
+    // sigaction(SIGINT, &a, NULL);
     // initialize buffer
     init(arguments->bufSize);
     // ----------------> establish client socket
     printf("clientip %s, clientport %d,  serverip %s, serverport %d \n", arguments->myIP, arguments->clientPort, arguments->serverIP, arguments->serverPort);
 
-    int client = connect_to_socket(arguments->myIP, arguments->clientPort);
+    int client = make_socket(arguments->myIP, arguments->clientPort);
+    // make a new socket
 
     if (listen(client, 1) < 0)
     {
@@ -224,7 +242,7 @@ void *Mainthread(void *args)
                         exit(EXIT_FAILURE);
                     }
                     fprintf(stderr,
-                            "Client: connect from host %s, port %hd.\n",
+                            "Client: connect from host %s, port %d.\n",
                             inet_ntoa(clientname.sin_addr),
                             ntohs(clientname.sin_port));
                     FD_SET(new, &active_fd_set);
@@ -299,7 +317,7 @@ int read_from_client1(int socketD, char *dir)
         else if (!strcmp(buffer, "WELCOME"))
         {
             printf("sending get clients..\n");
-            sendGetClients(server);
+            sendGetClients(socketD);
         }
         else if (strstr(buffer, "USER_ON") != NULL)
         {
@@ -308,9 +326,11 @@ int read_from_client1(int socketD, char *dir)
         }
         else if (strstr(buffer, "FILE_LIST") != NULL)
         {
+            printf("I received %s\n", buffer);
         }
         else if (strstr(buffer, "FILE_SIZE") != NULL)
         {
+            printf("I received %s\n", buffer);
         }
         else if (!strcmp(buffer, "FILE_UP_TO_DATE"))
         {

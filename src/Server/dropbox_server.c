@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <sys/select.h>
 #include "../HeaderFiles/Common.h"
 #include "../HeaderFiles/LinkedList.h"
 #include "headerfile.h"
@@ -39,24 +40,10 @@ int read_from_client(int socketDescr)
         fprintf(stderr, "Server: got message: '%s'\n", buffer);
         if (strstr(buffer, "LOG_ON") != NULL)
         {
-
-            char *IP = malloc(25);
-            strcpy(IP, "");
-            int port = 0;
-            int cliSocket = logOn(&headList, buffer, &IP, &port);
-            // keepalive this connection and wait for the get clients
-            strcpy(buffer, "");
-            recv(cliSocket, buffer, BUFSIZ + 1, 0);
-
-            if (!strcmp(buffer, "GET_CLIENTS"))
-            {
-                getClients(&headList, socketDescr, IP, port);
-            }
-            else
-            {
-                fprintf(stderr, "something went wrong in receiving getclients\n");
-            }
+            printf("I am going to deal with log on and get clients now\n");
+            logOn(&headList, buffer);
         }
+        
         else if (!strcmp(buffer, "LOG_OFF"))
         {
             printf("buffer --> %s\n", buffer);
@@ -74,6 +61,15 @@ int read_from_client(int socketDescr)
 int main(int argc, char *argv[])
 {
     headList = NULL;
+    int sock;
+    fd_set active_fd_set, read_fd_set;
+    int i;
+    struct sockaddr_in clientname;
+    size_t size;
+    char hostbuffer[256];
+    char *IPbuffer;
+    struct hostent *host_entry;
+    int hostname;
     int port = 0;
     if (argc != 3)
     {
@@ -82,12 +78,6 @@ int main(int argc, char *argv[])
     }
     port = atoi(argv[2]);
 
-    char *buffer; //data buffer of 1K
-    buffer = malloc(BUFSIZ + 1);
-    char hostbuffer[256];
-    char *IPbuffer;
-    struct hostent *host_entry;
-    int hostname;
     // To retrieve hostname
     hostname = gethostname(hostbuffer, sizeof(hostbuffer));
     checkHostName(hostname);
@@ -99,11 +89,6 @@ int main(int argc, char *argv[])
     // To convert an Internet network
     // address into ASCII string
     IPbuffer = inet_ntoa(*((struct in_addr *)host_entry->h_addr_list[0]));
-    int sock;
-    fd_set active_fd_set, read_fd_set;
-    int i;
-    struct sockaddr_in clientname;
-    socklen_t size;
 
     /* Create the socket and set it up to accept connections. */
     sock = make_socket(IPbuffer, port);
@@ -113,6 +98,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    printf("Server listening @IP: %s , @port: %d\n",IPbuffer, port);
     /* Initialize the set of active sockets. */
     FD_ZERO(&active_fd_set);
     FD_SET(sock, &active_fd_set);
@@ -145,7 +131,7 @@ int main(int argc, char *argv[])
                         exit(EXIT_FAILURE);
                     }
                     fprintf(stderr,
-                            "Server: connect from host %s, port %hd.\n",
+                            "Server: connect from host %s, port %d.\n",
                             inet_ntoa(clientname.sin_addr),
                             ntohs(clientname.sin_port));
                     FD_SET(new, &active_fd_set);

@@ -138,10 +138,13 @@ int connect_to_socket(char *myIP, int port)
 	sock_addr.sin_port = htons(port);
 	// connect
 	int con = connect(socketD, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
-	if (con == 0)
+	if (con == 0){
 		printf("Client Connected\n");
-	else
+	}
+	else{
 		printf("Error in Connection\n");
+		exit(1);
+	}
 
 	return socketD;
 }
