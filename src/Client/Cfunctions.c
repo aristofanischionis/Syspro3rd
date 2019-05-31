@@ -54,6 +54,7 @@ void *threadsWork(void *args)
     buffer = malloc(BUFSIZ);
     while (1)
     {
+        printf("threads in while loopa \n");
         temp = retrieve();
         pthread_cond_signal(&cond_nonfull);
         
@@ -84,7 +85,7 @@ void *threadsWork(void *args)
             pthread_mutex_unlock(&mutexList);
             char *fullPath = malloc(BUFSIZ);
             struct stat info;
-            sprintf(fullPath, "%s/%s_%d/%s", arguments->dirName, temp.IPaddress, temp.portNum, temp.pathname);
+            sprintf(fullPath, "%s_%d/%s", temp.IPaddress, temp.portNum, temp.pathname);
             printf("the name of the file is %s \n", fullPath);
             if (stat(fullPath, &info) != 0)
             {
@@ -100,7 +101,7 @@ void *threadsWork(void *args)
                 // create the file fullPath
                 char *command = malloc(BUFSIZ+1);
                 char buf[BUFSIZ + 1];
-                char *res = realpath("./createFileDirs.sh", buf);
+                char *res = realpath("./src/Client/createFileDirs.sh", buf);
                 if (!res) {
                     // printf("This source is at %s.\n", buf);
                     perror("realpath");
@@ -108,6 +109,7 @@ void *threadsWork(void *args)
                 }
                 
                 sprintf(command, "%s %s", buf,fullPath);
+                printf("About to create file \n");
                 system(command);
                 free(command);
                 // receive all the info to put the contents in the file
@@ -310,9 +312,12 @@ int read_from_client1(int socketD, char *dir)
             // tokenize it and push it in to list with mutexes
             printf("received client list.. %s\n", buffer);
             tokenizeClientList(buffer);
+            printf("received client list after tokenize...\n");
+
             // now I have all of the clients in my list
             // put the requests in the buffer for all the entries in my list
             putRequestsInBuffer();
+            printf("I put the clients in the buffer items: %d \n", myBuffer.count);
         }
         else if (!strcmp(buffer, "WELCOME"))
         {
@@ -323,6 +328,7 @@ int read_from_client1(int socketD, char *dir)
         {
             printf("I received info, user on %s\n", buffer);
             insertInClientList(buffer);
+            printf("I am after user on buffer items : %d\n", myBuffer.count);
         }
         else if (strstr(buffer, "FILE_LIST") != NULL)
         {
@@ -483,8 +489,6 @@ void insertInClientList(char *input)
     free(IP);
 }
 
-
-
 void sendFileList(char *dirName, int clientSocket)
 {
     int numOfFiles = 0;
@@ -500,7 +504,7 @@ void sendFileList(char *dirName, int clientSocket)
     strcpy(str2, temp);
     appendString(&result, str1, str2);
 
-    printf("final result-----------> %s \n", result);
+    printf("my filelist to send is-----------> %s \n", result);
     // so now just send this final result to the other
     send(clientSocket, result, strlen(result), 0);
     close(clientSocket);
