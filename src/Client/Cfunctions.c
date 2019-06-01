@@ -52,7 +52,7 @@ void *threadsWork(void *args)
     // struct sockaddr_in client_addr;
     char *buffer;
     char *request = malloc(BUFSIZ);
-    buffer = malloc(BUFSIZ);
+    buffer = malloc(2*BUFSIZ);
     while (1)
     {
         // printf("threads in while loopa \n");
@@ -67,6 +67,7 @@ void *threadsWork(void *args)
             //
             printf("Sending get file list \n");
             send(sock, "GET_FILE_LIST", 15, 0);
+            strcpy(buffer, "");
             recv(sock, buffer, 1024, 0);
             // close(sock);
             printf("buffer is -> %s \n", buffer);
@@ -97,6 +98,7 @@ void *threadsWork(void *args)
                 // 000 means it doesn't exist
                 sprintf(request, "GET_FILE < %s , 000 >", temp.pathname);
                 send(sock, request, strlen(request) + 1, 0);
+                strcpy(buffer, "");
                 recv(sock, buffer, BUFSIZ, 0);
                 // now I have received the first part of a receive file operation
                 // create the file fullPath
@@ -132,6 +134,7 @@ void *threadsWork(void *args)
                 free(backupPath);
                 sprintf(request, "GET_FILE < %s , %s >", temp.pathname, version);
                 send(sock, request, strlen(request) + 1, 0);
+                strcpy(buffer, "");
                 recv(sock, buffer, BUFSIZ, 0);
                 // now I have the response in buffer
                 if (!strcmp(buffer, "FILE_UP_TO_DATE"))
