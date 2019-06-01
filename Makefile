@@ -32,8 +32,8 @@ Buffer.o : src/Client/Buffer.c src/Client/headerfile.h
 dropbox_server.o : src/Server/dropbox_server.c src/commonFuncs.c src/Server/headerfile.h
 	$(CC) $(FLAGS) src/Server/dropbox_server.c src/commonFuncs.c
 
-list.o : src/GenericList/list.c src/HeaderFiles/LinkedList.h
-	$(CC) $(FLAGS) src/GenericList/list.c 
+list.o : src/List/list.c src/HeaderFiles/LinkedList.h
+	$(CC) $(FLAGS) src/List/list.c 
 
 commonFuncs.o : src/commonFuncs.c src/HeaderFiles/Common.h 
 	$(CC) $(FLAGS) src/commonFuncs.c

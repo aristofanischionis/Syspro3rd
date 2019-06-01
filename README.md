@@ -7,4 +7,6 @@
 ## List of things TODO
 
     *Fix LogOFF and signaling
+    *check for big files
+    *check if working at linux workstations
     *memory management frees, threads handling

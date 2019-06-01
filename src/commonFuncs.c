@@ -17,14 +17,6 @@
 #include <fcntl.h>
 #include "HeaderFiles/Common.h"
 
-int bind_on_port(int sock, short port)
-{
-	struct sockaddr_in server;
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = htonl(INADDR_ANY);
-	server.sin_port = htons(port);
-	return bind(sock, (struct sockaddr *)&server, sizeof(server));
-}
 
 void handle_signal_action(int sig_number)
 {

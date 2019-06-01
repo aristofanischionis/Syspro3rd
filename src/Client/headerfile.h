@@ -5,9 +5,9 @@
 int Initialisation(char *serverIP, int serverPort);
 void *threadsWork(void *args);
 void *Mainthread(void *args);
-void sendLogOn(char *myIP, int myPort, int server);
-void sendGetClients(int server);
-void sendLogOff(char *IP, int port, int server);
+void sendLogOn(int sock);
+void sendGetClients(int sock);
+void sendLogOff(int sock);
 void tokenizeClientList(char *input);
 char *strremove(char *str, const char *sub);
 void deleteFromList(char *input);

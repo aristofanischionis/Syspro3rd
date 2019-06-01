@@ -23,25 +23,22 @@
 #include "../HeaderFiles/Common.h"
 #include "../HeaderFiles/LinkedList.h"
 
-pthread_mutex_t mutexList;
-
 Buffer myBuffer;
-extern pthread_cond_t cond_nonempty;
-extern pthread_cond_t cond_nonfull;
 pthread_mutex_t mutex;
-
+pthread_mutex_t mutexList;
 pthread_cond_t cond_wakeup;
 char *clientIP;
-// int port, server;
+int port, server;
 Node *ClientsListHead;
-#define MAX_FILE_SIZE 3000
+#define MAX_FILE_SIZE 4096
 
+
+// server sock should be replaced with another one where I will send my log off req
 void terminating()
 {
     printf("terminating-------------->\n");
-    // sendLogOff(clientIP, port, server);
+    sendLogOff(server);
     pthread_exit(NULL);
-    exit(0);
 }
 
 void *threadsWork(void *args)
@@ -52,16 +49,13 @@ void *threadsWork(void *args)
     arguments = (struct args_Workers *)args;
     buffer_entry temp;
     int sock = 0;
-    // struct sockaddr_in client_addr;
     char *buffer;
     char *request = malloc(BUFSIZ);
     buffer = malloc(2*BUFSIZ);
     pthread_cond_wait(&cond_wakeup, &mutex);
     while (1)
     {
-        // printf("threads in while loopa \n");
         temp = retrieve();
-        // pthread_cond_signal(&cond_nonfull);
         
         sock = connect_to_socket(temp.IPaddress, temp.portNum);
         // begin doing things
@@ -72,8 +66,7 @@ void *threadsWork(void *args)
             printf("Sending get file list \n");
             send(sock, "GET_FILE_LIST", 15, 0);
             strcpy(buffer, "");
-            recv(sock, buffer, 1024, 0);
-            // close(sock);
+            recv(sock, buffer, 2048, 0);
             printf("buffer is -> %s \n", buffer);
             // insert in buffer
             readFileList(buffer, temp.IPaddress, temp.portNum);
@@ -95,8 +88,6 @@ void *threadsWork(void *args)
             // printf("the name of the file is %s \n", fullPath);
             if (stat(fullPath, &info) != 0)
             {
-                // fprintf(stderr, "stat() error on %s: %s\n", fullPath, strerror(errno));
-                // pthread_exit(NULL);
                 printf("File doesn't exist! \n");
                 // not exists so i have to create it
                 // 000 means it doesn't exist
@@ -110,7 +101,6 @@ void *threadsWork(void *args)
                 char buf[BUFSIZ + 1];
                 char *res = realpath("./src/Client/createFileDirs.sh", buf);
                 if (!res) {
-                    // printf("This source is at %s.\n", buf);
                     perror("realpath");
                     pthread_exit(NULL);
                 }
@@ -121,7 +111,6 @@ void *threadsWork(void *args)
                 // receive all the info to put the contents in the file
                 readFile(buffer, sock, fullPath);
 
-                // close(sock);
             }
             else if (S_ISREG(info.st_mode))
             {
@@ -157,13 +146,10 @@ void *threadsWork(void *args)
                     // receive all the info to put the contents in the file
                     readFile(buffer, sock, fullPath);
                 }
-                // close(sock);
                 free(version);
             }
             else
             {
-                // not exists so i have to create it
-                // 000 means it doesn't exist
                 printf("weird things happen \n");
                 pthread_exit(NULL);
             }
@@ -179,7 +165,6 @@ void *Mainthread(void *args)
 {
     fd_set active_fd_set, read_fd_set;
     int i;
-    int server;
     struct sockaddr_in clientname;
     size_t size;
     struct args_MainThread *arguments;
@@ -192,7 +177,7 @@ void *Mainthread(void *args)
 
     server = connect_to_socket(arguments->serverIP, arguments->serverPort);
 
-    // port = arguments->clientPort;
+    port = arguments->clientPort;
     // signal(SIGINT, terminating);
     strcpy(clientIP, arguments->myIP);
     // struct sigaction a;
@@ -218,7 +203,7 @@ void *Mainthread(void *args)
     FD_ZERO(&active_fd_set);
     FD_SET(client, &active_fd_set);
     // send the log on
-    sendLogOn(arguments->myIP, arguments->clientPort, server);
+    sendLogOn(server);
     while (1)
     {
         /* Block until input arrives on one or more active sockets. */
@@ -256,7 +241,7 @@ void *Mainthread(void *args)
                 {
                     /* Data arriving on an already-connected socket. */
                     char *dir;
-                    dir = malloc(512);
+                    dir = malloc(1024);
                     strcpy(dir, arguments->dirName);
                     if (read_from_client1(i, dir) < 0)
                     {
@@ -329,42 +314,43 @@ int read_from_client1(int socketD, char *dir)
         else
         {
             // it's just a message from server
+
             printf("Server told me--->: %s \n", buffer);
         }
         return 0;
     }
 }
 
-void sendLogOn(char *myIP, int myPort, int server)
+void sendLogOn(int sock)
 {
     // ------------------------ LOG_ON---------------------
     char *message;
     message = malloc(BUFSIZ + 1);
-    sprintf(message, "LOG_ON < %s , %d >", myIP, myPort);
-    send(server, message, strlen(message), 0);
+    sprintf(message, "LOG_ON < %s , %d >", clientIP, port);
+    send(sock, message, strlen(message), 0);
     free(message);
 }
 
-void sendGetClients(int server)
+void sendGetClients(int sock)
 {
     // ------------------------ GET_CLIENTS---------------------
     char *message;
     message = malloc(14);
     sprintf(message, "GET_CLIENTS");
-    send(server, message, 13, 0);
+    send(sock, message, 13, 0);
     free(message);
 }
 
-void sendLogOff(char *IP, int port, int server)
+void sendLogOff(int sock)
 {
     // ------------------------ LOG_OFF---------------------
     char *message;
     message = malloc(BUFSIZ + 1);
-    sprintf(message, "LOG_OFF < %s , %d >", IP, port);
+    sprintf(message, "LOG_OFF < %s , %d >", clientIP, port);
     printf("eimai o client-------> message: %s \n", message);
-    send(server, message, strlen(message), 0);
+    send(sock, message, strlen(message), 0);
     free(message);
-    // close(server);
+    close(sock);
 }
 
 // input str should be like this:

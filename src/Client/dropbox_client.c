@@ -46,7 +46,6 @@ void paramChecker(int n, char *argv[], char *toCheck, char **result)
 }
 
 
-
 int main(int argc, char *argv[])
 {
     struct args_MainThread arguments;
