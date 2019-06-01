@@ -604,19 +604,15 @@ void readFile(char *source, int socketSD, char *fullPath)
     FILE *fp;
     char *sourceStr;
     char *tobeRemov;
-    // char *chunk;
     char *version;
     char *data;
     data = malloc(MAX_FILE_SIZE);
     int bytes = 0;
-    // int times = 0;
     sourceStr = malloc(strlen(source) + 1);
     tobeRemov = malloc(50);
     version = malloc(33);
-    // chunk = malloc(BUFSIZ + 1);
     strcpy(sourceStr, source);
     sscanf(sourceStr, "FILE_SIZE %s %d", version, &bytes);
-    // times = bytes / BUFSIZ + 1;
     fp = fopen(fullPath, "w");
     if (fp == NULL)
     {
@@ -628,16 +624,10 @@ void readFile(char *source, int socketSD, char *fullPath)
     sourceStr = strremove(sourceStr, tobeRemov);
     // now sourcestr has only the data
     strcpy(data, sourceStr);
-
-    // printf("----------->I will write %s to %s \n", data, fullPath);
     fwrite(data, 1, strlen(data), fp);
     
-
     fclose(fp);
-    // close(socketSD);
     free(sourceStr);
-    // free(tobeRemov);
     free(version);
     free(data);
-    // free(chunk);
 }

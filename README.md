@@ -6,7 +6,5 @@
 
 ## List of things TODO
 
-    *only running with gdb
-    *send files in chuncks
     *Fix LogOFF and signaling
     *memory management frees, threads handling
