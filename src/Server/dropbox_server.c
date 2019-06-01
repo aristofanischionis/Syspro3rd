@@ -44,7 +44,7 @@ int read_from_client(int socketDescr)
             logOn(&headList, buffer);
         }
         
-        else if (!strcmp(buffer, "LOG_OFF"))
+        else if (strstr(buffer, "LOG_OFF") != NULL)
         {
             // printf("buffer --> %s\n", buffer);
             logOff(&headList, buffer, socketDescr);

@@ -2,8 +2,6 @@
 #define COMMON_HEADER
 #include <netdb.h>
 
-void handle_signal_action(int sig_number);
-int setup_signals();
 void appendString(char **new_str, char *str1, char *str2);
 int make_socket(char *myIP, int port);
 int connect_to_socket(char *myIP, int port);

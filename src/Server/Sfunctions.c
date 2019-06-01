@@ -76,8 +76,8 @@ void logOff(Node **headList, char *buffer, int sd)
     message = malloc(50);
     sscanf(buffer, "LOG_OFF < %s , %d >", IP, &port);
     // printf("LOG_OFF got from ---> , ip %s , port %d \n", IP, port);
-    send(sd, "Ok byeee", 10, 0);
-    close(sd);
+    // send(sd, "Ok byeee", 10, 0);
+    // close(sd);
     if (deleteNode(headList, IP, port) == 0)
     {
         fprintf(stderr, "ERROR_IP_PORT_NOT_FOUND_IN_LIST\n");

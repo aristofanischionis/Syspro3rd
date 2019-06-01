@@ -16,6 +16,24 @@
 #include "../HeaderFiles/Common.h"
 
 #define MAX_PATH 200
+pthread_t *threads;
+char* serverIPa;
+int threadsNum;
+int serverPorta;
+// server sock should be replaced with another one where I will send my log off req
+void terminating()
+{
+    int server = connect_to_socket(serverIPa, serverPorta);
+    printf("terminating this client!\n");
+    sendLogOff(server);
+    close(server);
+    // close all threads
+    for(int i = threadsNum-1;i > 0;i--){
+        pthread_kill(threads[i], SIGTERM);
+    }
+    pthread_exit(NULL);
+}
+
 
 // parse command line args
 void paramChecker(int n, char *argv[], char *toCheck, char **result)
@@ -52,8 +70,8 @@ int main(int argc, char *argv[])
     struct args_Workers argumentsWorkers;
     int n = argc;
     char *dirName, *portNum, *workerThreads, *bufferSize, *serverPortStr, *serverIP;
-    int port = 0, threadsNum = 0, bSize = 0, serverPort = 0;
-    pthread_t *threads;
+    int port = 0, bSize = 0, serverPort = 0;
+    // pthread_t *threads;
     // init strings
     dirName = (char *)malloc(MAX_PATH);
     portNum = (char *)malloc(8);
@@ -108,11 +126,15 @@ int main(int argc, char *argv[])
     strcpy(arguments.myIP, IPbuffer);
 
     ///
-
     strcpy(argumentsWorkers.dirName, dirName);
     strcpy(argumentsWorkers.myIP, IPbuffer);
     argumentsWorkers.myPort = port;
 
+    // signal handler
+    serverIPa = malloc(25);
+    strcpy(serverIPa, serverIP);
+    serverPorta = serverPort;
+    signal(SIGINT, terminating);
     printf("before thread\n");
     pthread_create(&threads[0], NULL, Mainthread, &arguments);
     //    

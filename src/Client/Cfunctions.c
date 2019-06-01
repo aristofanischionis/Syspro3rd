@@ -27,19 +27,13 @@ Buffer myBuffer;
 pthread_mutex_t mutex;
 pthread_mutex_t mutexList;
 pthread_cond_t cond_wakeup;
-char *clientIP;
-int port, server;
+char *myIP;
+int myPort;
 Node *ClientsListHead;
 #define MAX_FILE_SIZE 4096
 
 
-// server sock should be replaced with another one where I will send my log off req
-void terminating()
-{
-    printf("terminating-------------->\n");
-    sendLogOff(server);
-    pthread_exit(NULL);
-}
+
 
 void *threadsWork(void *args)
 {
@@ -172,19 +166,13 @@ void *Mainthread(void *args)
     pthread_mutex_init(&mutex, NULL);
     pthread_cond_init(&cond_wakeup, NULL);
     ClientsListHead = NULL;
-    clientIP = malloc(25);
+    myIP = malloc(25);
     arguments = (struct args_MainThread *)args;
 
-    server = connect_to_socket(arguments->serverIP, arguments->serverPort);
+    int server = connect_to_socket(arguments->serverIP, arguments->serverPort);
 
-    port = arguments->clientPort;
-    // signal(SIGINT, terminating);
-    strcpy(clientIP, arguments->myIP);
-    // struct sigaction a;
-    // a.sa_handler = terminating;
-    // a.sa_flags = 0;
-    // sigemptyset(&a.sa_mask);
-    // sigaction(SIGINT, &a, NULL);
+    strcpy(myIP, arguments->myIP);
+    myPort = arguments->clientPort;
     // initialize buffer
     init(arguments->bufSize);
     // ----------------> establish client socket
@@ -326,7 +314,7 @@ void sendLogOn(int sock)
     // ------------------------ LOG_ON---------------------
     char *message;
     message = malloc(BUFSIZ + 1);
-    sprintf(message, "LOG_ON < %s , %d >", clientIP, port);
+    sprintf(message, "LOG_ON < %s , %d >", myIP, myPort);
     send(sock, message, strlen(message), 0);
     free(message);
 }
@@ -346,11 +334,9 @@ void sendLogOff(int sock)
     // ------------------------ LOG_OFF---------------------
     char *message;
     message = malloc(BUFSIZ + 1);
-    sprintf(message, "LOG_OFF < %s , %d >", clientIP, port);
-    printf("eimai o client-------> message: %s \n", message);
-    send(sock, message, strlen(message), 0);
+    sprintf(message, "LOG_OFF < %s , %d >", myIP, myPort);
+    send(sock, message, strlen(message) +1, 0);
     free(message);
-    close(sock);
 }
 
 // input str should be like this:
