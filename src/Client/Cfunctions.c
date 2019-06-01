@@ -31,7 +31,7 @@ extern pthread_cond_t cond_nonfull;
 char *clientIP;
 // int port, server;
 Node *ClientsListHead;
-#define MAX_FILE_SIZE 128000
+#define MAX_FILE_SIZE 3000
 
 void terminating()
 {
@@ -57,7 +57,7 @@ void *threadsWork(void *args)
     {
         // printf("threads in while loopa \n");
         temp = retrieve();
-        pthread_cond_signal(&cond_nonfull);
+        // pthread_cond_signal(&cond_nonfull);
         
         sock = connect_to_socket(temp.IPaddress, temp.portNum);
         // begin doing things
@@ -86,7 +86,7 @@ void *threadsWork(void *args)
             pthread_mutex_unlock(&mutexList);
             char *fullPath = malloc(BUFSIZ);
             struct stat info;
-            sprintf(fullPath, "%s_%d/%s", temp.IPaddress, temp.portNum, temp.pathname);
+            sprintf(fullPath, "%s_%d/%s_%d/%s", arguments->myIP, arguments->myPort, temp.IPaddress, temp.portNum, temp.pathname);
             // printf("the name of the file is %s \n", fullPath);
             if (stat(fullPath, &info) != 0)
             {
@@ -126,7 +126,7 @@ void *threadsWork(void *args)
                 // this is the fiile starting with 127. ....
                 char* backupPath = malloc(1025);
 
-                sprintf(backupPath, "%s_%d/%s", temp.IPaddress, temp.portNum, temp.pathname);
+                sprintf(backupPath, "%s_%d/%s_%d/%s",arguments->myIP, arguments->myPort, temp.IPaddress, temp.portNum, temp.pathname);
                 strcpy(version, calculateMD5hash(backupPath));
                 strcpy(temp.version, version);
                 free(backupPath);
@@ -414,7 +414,7 @@ void putRequestsInBuffer()
         strcpy(temp.version, "-1");
         // temp is the ready request so put it in buffer
         put(temp);
-        pthread_cond_signal(&cond_nonempty);
+        // pthread_cond_signal(&cond_nonempty);
         node = node->next;
     }
     pthread_mutex_unlock(&mutexList);
@@ -454,7 +454,7 @@ void insertInClientList(char *input)
     strcpy(temp.version, "-1");
     // temp is the ready request so put it in buffer
     put(temp);
-    pthread_cond_signal(&cond_nonempty);
+    // pthread_cond_signal(&cond_nonempty);
     free(IP);
 }
 
@@ -577,7 +577,7 @@ void readFileList(char *source, char *IPsender, int portSender)
         temp.portNum = portSender;
         printf("-------------> %d %s \n", temp.portNum, temp.pathname);
         put(temp);
-        pthread_cond_signal(&cond_nonempty);
+        // pthread_cond_signal(&cond_nonempty);
         sprintf(tobeRemov, "< %s , %s > ", pathName, version);
         sourceStr = strremove(sourceStr, tobeRemov);
     }

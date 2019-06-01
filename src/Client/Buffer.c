@@ -46,6 +46,7 @@ void put(buffer_entry data)
     myBuffer.elements[myBuffer.end] = data;
     myBuffer.count++;
     pthread_mutex_unlock(&mutexBuffer);
+    pthread_cond_signal(&cond_nonempty);
 }
 
 struct buffer_entry retrieve()
@@ -65,6 +66,7 @@ struct buffer_entry retrieve()
     myBuffer.start = (myBuffer.start + 1) % BUF_SIZE;
     myBuffer.count--;
     pthread_mutex_unlock(&mutexBuffer);
+    pthread_cond_signal(&cond_nonfull);
     return data;
 }
 
