@@ -28,6 +28,9 @@ pthread_mutex_t mutexList;
 Buffer myBuffer;
 extern pthread_cond_t cond_nonempty;
 extern pthread_cond_t cond_nonfull;
+pthread_mutex_t mutex;
+
+pthread_cond_t cond_wakeup;
 char *clientIP;
 // int port, server;
 Node *ClientsListHead;
@@ -53,6 +56,7 @@ void *threadsWork(void *args)
     char *buffer;
     char *request = malloc(BUFSIZ);
     buffer = malloc(2*BUFSIZ);
+    pthread_cond_wait(&cond_wakeup, &mutex);
     while (1)
     {
         // printf("threads in while loopa \n");
@@ -180,6 +184,8 @@ void *Mainthread(void *args)
     size_t size;
     struct args_MainThread *arguments;
     pthread_mutex_init(&mutexList, NULL);
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&cond_wakeup, NULL);
     ClientsListHead = NULL;
     clientIP = malloc(25);
     arguments = (struct args_MainThread *)args;
@@ -309,6 +315,8 @@ int read_from_client1(int socketD, char *dir)
             // now I have all of the clients in my list
             // put the requests in the buffer for all the entries in my list
             putRequestsInBuffer();
+            //wake up threads
+            pthread_cond_broadcast(&cond_wakeup);
         }
         else if (!strcmp(buffer, "WELCOME"))
         {

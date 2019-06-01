@@ -6,7 +6,7 @@
 
 ## List of things TODO
 
+    *only running with gdb
     *send files in chuncks
-    *Make a parent folder to put the backups from other clients
     *Fix LogOFF and signaling
     *memory management frees, threads handling
