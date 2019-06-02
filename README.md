@@ -7,4 +7,9 @@
 ## List of things TODO
 
     *check for big files
+    *check with more clients
     *check if working at linux workstations
+    *fix leaks
+    *comments
+    *readme
+    *clearup

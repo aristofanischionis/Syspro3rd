@@ -53,6 +53,7 @@ void logOn(Node **headList, char *buffer)
     {
         fprintf(stderr, "something went wrong in receiving getclients\n");
     }
+    close(client);
 }
 
 void getClients(Node **headList, int sd, char *IP, int port)

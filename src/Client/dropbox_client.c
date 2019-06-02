@@ -28,7 +28,7 @@ void terminating()
     sendLogOff(server);
     close(server);
     // close all threads
-    for(int i = threadsNum-1;i > 0;i--){
+    for(int i = threadsNum-1;i >= 0;i--){
         pthread_kill(threads[i], SIGTERM);
     }
     pthread_exit(NULL);
@@ -89,7 +89,6 @@ int main(int argc, char *argv[])
     // make the appropriate convertions
     port = atoi(portNum);
     threadsNum = atoi(workerThreads);
-    threadsNum++;
     bSize = atoi(bufferSize);
     serverPort = atoi(serverPortStr);
     // freeing up useless memory
@@ -136,13 +135,12 @@ int main(int argc, char *argv[])
     serverPorta = serverPort;
     signal(SIGINT, terminating);
     printf("before thread\n");
-    pthread_create(&threads[0], NULL, Mainthread, &arguments);
-    //    
-    for(int i = 1 ; i<threadsNum ;i ++){
+    for(int i = 0 ; i<threadsNum ;i ++){
         pthread_create(&threads[i], NULL, threadsWork, &argumentsWorkers);
     }
+    Mainthread(&arguments);    
     //
-    for(int i = 0 ; i<threadsNum ;i ++){
+    for(int i = threadsNum-1 ; i>=0 ;i --){
         pthread_join(threads[i], NULL);
     }
 
