@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     fd_set active_fd_set, read_fd_set;
     int i;
     struct sockaddr_in clientname;
-    size_t size;
+    unsigned int size;
     char hostbuffer[256];
     char *IPbuffer;
     struct hostent *host_entry;

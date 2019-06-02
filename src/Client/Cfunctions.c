@@ -160,7 +160,7 @@ void *Mainthread(void *args)
     fd_set active_fd_set, read_fd_set;
     int i;
     struct sockaddr_in clientname;
-    size_t size;
+    unsigned int size;
     struct args_MainThread *arguments;
     pthread_mutex_init(&mutexList, NULL);
     pthread_mutex_init(&mutex, NULL);
@@ -313,9 +313,9 @@ void sendLogOn(int sock)
 {
     // ------------------------ LOG_ON---------------------
     char *message;
-    message = malloc(BUFSIZ + 1);
+    message = malloc(50);
     sprintf(message, "LOG_ON < %s , %d >", myIP, myPort);
-    send(sock, message, strlen(message), 0);
+    send(sock, message, strlen(message) +1, 0);
     free(message);
 }
 
@@ -325,7 +325,7 @@ void sendGetClients(int sock)
     char *message;
     message = malloc(13);
     sprintf(message, "GET_CLIENTS");
-    send(sock, message, 13, 0);
+    send(sock, message, strlen(message) +1, 0);
     free(message);
 }
 
@@ -333,7 +333,7 @@ void sendLogOff(int sock)
 {
     // ------------------------ LOG_OFF---------------------
     char *message;
-    message = malloc(BUFSIZ + 1);
+    message = malloc(50);
     sprintf(message, "LOG_OFF < %s , %d >", myIP, myPort);
     send(sock, message, strlen(message) +1, 0);
     free(message);
