@@ -323,7 +323,7 @@ void sendGetClients(int sock)
 {
     // ------------------------ GET_CLIENTS---------------------
     char *message;
-    message = malloc(14);
+    message = malloc(13);
     sprintf(message, "GET_CLIENTS");
     send(sock, message, 13, 0);
     free(message);
@@ -535,7 +535,7 @@ void readFileList(char *source, char *IPsender, int portSender)
     char *version;
     int numOfFiles = 0;
     sourceStr = malloc(strlen(source) + 1);
-    tobeRemov = malloc(50);
+    tobeRemov = malloc(BUFSIZ + 45);
     pathName = malloc(BUFSIZ);
     version = malloc(33);
     strcpy(sourceStr, source);

@@ -195,12 +195,12 @@ char *calculateMD5hash(char *pathname)
     FILE *fp;
     result = malloc(33);
     temp = malloc(strlen(pathname) + 1);
-    fileWithHash = malloc(strlen(pathname) + 4);
+    fileWithHash = malloc(strlen(pathname) + 5);
     strcpy(result, "");
     // call the script to make the file with the hash then read it from there
     sprintf(fileWithHash, "%s.md5", pathname);
 
-    command = malloc(4000);
+    command = malloc(strlen(pathname) + strlen(fileWithHash) + 12);
     sprintf(command, "md5sum %s > %s", pathname, fileWithHash);
     system(command);
     free(command);
