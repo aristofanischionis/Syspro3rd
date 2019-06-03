@@ -7,6 +7,4 @@
 ## List of things TODO
 
     *check if working at linux workstations
-    *comments
     *readme
-    *clearup
