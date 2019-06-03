@@ -35,6 +35,9 @@ void terminating()
     for(int i = threadsNum-1;i >= 0;i--){
         pthread_kill(threads[i], SIGTERM);
     }
+    for(int i = threadsNum-1;i >= 0;i--){
+        pthread_join(threads[i], NULL);
+    }
     pthread_exit(NULL);
 }
 

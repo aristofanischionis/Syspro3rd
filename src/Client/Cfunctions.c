@@ -122,10 +122,7 @@ void *threadsWork(void *args)
                 {
                     // not up to date
                     printf("File not up to date\n");
-                    // 001 means file exists but not up to date
-                    sprintf(request, "GET_FILE < %s , 001 >", temp.pathname);
-                    send(sock, request, strlen(request) + 1, 0);
-                    recv(sock, buffer, BUFSIZ-1, 0);
+                    // what I received are the file contents 
                     // receive all the info to put the contents in the file
                     readFile(buffer, sock, fullPath);
                 }
@@ -293,7 +290,7 @@ int read_from_client1(int socketD, char *dir)
         else
         {
             // it's just an unknown message
-            printf("Somene told me--->: %s \n", buffer);
+            printf("Someone told me--->: %s \n", buffer);
         }
         return 0;
     }
