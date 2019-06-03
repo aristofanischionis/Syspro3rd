@@ -40,13 +40,11 @@ int read_from_client(int socketDescr)
         fprintf(stderr, "Server: got message: '%s'\n", buffer);
         if (strstr(buffer, "LOG_ON") != NULL)
         {
-            // printf("I am going to deal with log on and get clients now\n");
             logOn(&headList, buffer);
         }
         
         else if (strstr(buffer, "LOG_OFF") != NULL)
         {
-            // printf("buffer --> %s\n", buffer);
             logOff(&headList, buffer, socketDescr);
         }
         else
@@ -92,7 +90,7 @@ int main(int argc, char *argv[])
 
     /* Create the socket and set it up to accept connections. */
     sock = make_socket(IPbuffer, port);
-    if (listen(sock, 1) < 0)
+    if (listen(sock, 5) < 0)
     {
         perror("listen");
         exit(EXIT_FAILURE);

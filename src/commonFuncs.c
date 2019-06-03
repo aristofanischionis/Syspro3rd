@@ -181,7 +181,6 @@ long long countSize(char *filename)
         exit(1);
     }
 
-    // printf("File size: %lld bytes\n", (long long)sb.st_size);
     return ((long long)sb.st_size);
 }
 
@@ -196,7 +195,8 @@ char *calculateMD5hash(char *pathname)
     temp = malloc(strlen(pathname) + 1);
     fileWithHash = malloc(strlen(pathname) + 5);
     strcpy(result, "");
-    // call the script to make the file with the hash then read it from there
+    // make a new file, file.md5 to put the hash
+	strcpy(fileWithHash, "");
     sprintf(fileWithHash, "%s.md5", pathname);
 
     command = malloc(strlen(pathname) + strlen(fileWithHash) + 12);

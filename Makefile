@@ -18,7 +18,7 @@ dropbox_client : dropbox_client.o Cfunctions.o Buffer.o list.o commonFuncs.o
 # create/compile the individual files >>separately<< 
 
 Cfunctions.o : src/Client/Cfunctions.c src/commonFuncs.c src/Client/headerfile.h
-	$(CC) $(FLAGS) src/Client/Cfunctions.c src/commonFuncs.c
+	$(CC) $(FLAGS) src/Client/Cfunctions.c src/commonFuncs.c 
 
 Sfunctions.o : src/Server/Sfunctions.c src/commonFuncs.c src/Server/headerfile.h
 	$(CC) $(FLAGS) src/Server/Sfunctions.c src/commonFuncs.c

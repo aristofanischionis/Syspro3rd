@@ -21,7 +21,7 @@ pthread_cond_t cond_nonfull;
 pthread_mutex_t mutexBuffer;
 extern Buffer myBuffer;
 
-
+// this is the same as the example from mr Ntoulas slides
 void init(int bufSize)
 {
     BUF_SIZE = bufSize;
@@ -39,7 +39,6 @@ void put(buffer_entry data)
     pthread_mutex_lock(&mutexBuffer);
     while (myBuffer.count >= BUF_SIZE)
     {
-        // printf(">> Found  Buffer  Full \n");
         pthread_cond_wait(&cond_nonfull, &mutexBuffer);
     }
     myBuffer.end = (myBuffer.end + 1) % BUF_SIZE;
@@ -59,14 +58,9 @@ struct buffer_entry retrieve()
     pthread_mutex_lock(&mutexBuffer);
     while (myBuffer.count <= 0)
     {
-        // printf(">> Found  Buffer  Empty \n");
         pthread_cond_wait(&cond_nonempty, &mutexBuffer);
     }
     data = myBuffer.elements[myBuffer.start];
-    printf("------------------------------------------------>\n");
-    printf("pathname is -> %s ...\n", data.pathname);
-    printf("------------------------------------------------>\n");
-    fflush(stdout);
     myBuffer.start = (myBuffer.start + 1) % BUF_SIZE;
     myBuffer.count--;
     pthread_mutex_unlock(&mutexBuffer);

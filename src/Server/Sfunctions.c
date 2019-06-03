@@ -26,9 +26,7 @@ void logOn(Node **headList, char *buffer)
     int tempClientSD;
     // now I have to send to all users in the list a message USER_ON
     sprintf(message, "USER_ON < %s , %d >", IPaddr, porta);
-    // printf("My message is : %s", message);
     send(client, "WELCOME", 8, 0);
-    // close(client);
     // send it to all others
     Node *temp;
     temp = *headList;
@@ -62,7 +60,6 @@ void getClients(Node **headList, int sd, char *IP, int port)
     result = malloc(BUFSIZ);
 
     listToString(*headList, &result, IP, port);
-    // printf("My string is : %s\n", result);
     // now send it to this socket
     send(sd, result, strlen(result) + 1, 0);
     free(result);
@@ -76,9 +73,7 @@ void logOff(Node **headList, char *buffer, int sd)
     IP = malloc(20);
     message = malloc(50);
     sscanf(buffer, "LOG_OFF < %s , %d >", IP, &port);
-    // printf("LOG_OFF got from ---> , ip %s , port %d \n", IP, port);
-    // send(sd, "Ok byeee", 10, 0);
-    // close(sd);
+
     if (deleteNode(headList, IP, port) == 0)
     {
         fprintf(stderr, "ERROR_IP_PORT_NOT_FOUND_IN_LIST\n");

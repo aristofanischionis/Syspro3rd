@@ -18,22 +18,20 @@
 #define MAX_PATH 200
 pthread_t *threads;
 struct args_Workers argumentsWorkers;
-// pthread_cond_t cond_wakeup;
-// pthread_mutex_t mutex;
-// extern pthread_mutex_t socketMutex;
+
 char* serverIPa;
 int threadsNum;
 int serverPorta;
-// server sock should be replaced with another one where I will send my log off req
+
 void terminating()
 {
     int server = connect_to_socket(serverIPa, serverPorta);
     printf("terminating this client!\n");
     sendLogOff(server);
     close(server);
+    destroy();
     // // close all threads
-    // pthread_cond_destroy(&cond_wakeup);
-    // pthread_mutex_destroy(&socketMutex);
+
     for(int i = threadsNum-1;i >= 0;i--){
         pthread_kill(threads[i], SIGTERM);
     }
@@ -73,11 +71,9 @@ void paramChecker(int n, char *argv[], char *toCheck, char **result)
 int main(int argc, char *argv[])
 {
     struct args_MainThread arguments;
-    // struct args_Workers argumentsWorkers;
     int n = argc;
     char *dirName, *portNum, *workerThreads, *bufferSize, *serverPortStr, *serverIP;
     int port = 0, bSize = 0, serverPort = 0;
-    // pthread_t *threads;
     // init strings
     dirName = (char *)malloc(MAX_PATH);
     portNum = (char *)malloc(8);
@@ -122,7 +118,6 @@ int main(int argc, char *argv[])
     IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0]));
     printf("Client listening @IP: %s , @port: %d\n",IPbuffer, port);
     // start
-    // threads = malloc(threadsNum * sizeof(pthread_t));
     arguments.bufSize = bSize;
     arguments.clientPort = port;
     arguments.serverPort = serverPort;
@@ -140,20 +135,9 @@ int main(int argc, char *argv[])
     strcpy(serverIPa, serverIP);
     serverPorta = serverPort;
     signal(SIGINT, terminating);
-    printf("before thread\n");
-    // pthread_mutex_init(&socketMutex, NULL);
-    // pthread_cond_init(&cond_wakeup, NULL); // initializing the cond variable
-    // pthread_mutex_lock(&mutex);
-    // for(int i = 0 ; i<threadsNum ;i ++){
-    //     pthread_create(&threads[i], NULL, threadsWork, &argumentsWorkers);
-    // }
-    Mainthread(&arguments);    
-    //
-    // for(int i = threadsNum-1 ; i>=0 ;i --){
-    //     pthread_join(threads[i], NULL);
-    // }
+    
+    Mainthread(&arguments);
 
-    printf("After Thread\n");
     exit(0);
 }
 
