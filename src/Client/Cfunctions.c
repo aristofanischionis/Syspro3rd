@@ -24,16 +24,16 @@
 #include "../HeaderFiles/LinkedList.h"
 
 Buffer myBuffer;
-pthread_mutex_t mutex;
+// extern pthread_mutex_t mutex;
 pthread_mutex_t mutexList;
-pthread_cond_t cond_wakeup;
+// pthread_mutex_t socketMutex;
+extern int threadsNum;
+extern struct args_Workers argumentsWorkers;
+// extern pthread_cond_t cond_wakeup;
 char *myIP;
 int myPort;
 Node *ClientsListHead;
-#define MAX_FILE_SIZE 4096
-
-
-
+#define MAX_FILE_SIZE 2048
 
 void *threadsWork(void *args)
 {
@@ -45,13 +45,14 @@ void *threadsWork(void *args)
     int sock = 0;
     char *buffer;
     char *request = malloc(BUFSIZ);
-    buffer = malloc(2*BUFSIZ);
-    pthread_cond_wait(&cond_wakeup, &mutex);
+    buffer = malloc(BUFSIZ);
+    // pthread_cond_wait(&cond_wakeup, &mutex);
     while (1)
     {
         temp = retrieve();
-        
+        // pthread_mutex_lock(&socketMutex);
         sock = connect_to_socket(temp.IPaddress, temp.portNum);
+        // pthread_mutex_unlock(&socketMutex);
         // begin doing things
         if (!strcmp(temp.pathname, "-1"))
         {
@@ -60,7 +61,7 @@ void *threadsWork(void *args)
             printf("Sending get file list \n");
             send(sock, "GET_FILE_LIST", 15, 0);
             strcpy(buffer, "");
-            recv(sock, buffer, 2048, 0);
+            recv(sock, buffer, BUFSIZ -1, 0);
             printf("buffer is -> %s \n", buffer);
             // insert in buffer
             readFileList(buffer, temp.IPaddress, temp.portNum);
@@ -88,7 +89,7 @@ void *threadsWork(void *args)
                 sprintf(request, "GET_FILE < %s , 000 >", temp.pathname);
                 send(sock, request, strlen(request) + 1, 0);
                 strcpy(buffer, "");
-                recv(sock, buffer, BUFSIZ, 0);
+                recv(sock, buffer, BUFSIZ-1, 0);
                 // now I have received the first part of a receive file operation
                 // create the file fullPath
                 char *command = malloc(BUFSIZ+1);
@@ -122,7 +123,7 @@ void *threadsWork(void *args)
                 sprintf(request, "GET_FILE < %s , %s >", temp.pathname, version);
                 send(sock, request, strlen(request) + 1, 0);
                 strcpy(buffer, "");
-                recv(sock, buffer, BUFSIZ, 0);
+                recv(sock, buffer, BUFSIZ-1, 0);
                 // now I have the response in buffer
                 if (!strcmp(buffer, "FILE_UP_TO_DATE"))
                 {
@@ -136,7 +137,7 @@ void *threadsWork(void *args)
                     // 001 means file exists but not up to date
                     sprintf(request, "GET_FILE < %s , 001 >", temp.pathname);
                     send(sock, request, strlen(request) + 1, 0);
-                    recv(sock, buffer, BUFSIZ, 0);
+                    recv(sock, buffer, BUFSIZ-1, 0);
                     // receive all the info to put the contents in the file
                     readFile(buffer, sock, fullPath);
                 }
@@ -163,14 +164,15 @@ void *Mainthread(void *args)
     unsigned int size;
     struct args_MainThread *arguments;
     pthread_mutex_init(&mutexList, NULL);
-    pthread_mutex_init(&mutex, NULL);
-    pthread_cond_init(&cond_wakeup, NULL);
+    // pthread_mutex_init(&socketMutex, NULL);
+    // pthread_mutex_init(&mutex, NULL);
+    // pthread_cond_init(&cond_wakeup, NULL);
     ClientsListHead = NULL;
     myIP = malloc(25);
     arguments = (struct args_MainThread *)args;
-
+    // pthread_mutex_lock(&socketMutex);
     int server = connect_to_socket(arguments->serverIP, arguments->serverPort);
-
+    // pthread_mutex_unlock(&socketMutex);
     strcpy(myIP, arguments->myIP);
     myPort = arguments->clientPort;
     // initialize buffer
@@ -289,7 +291,12 @@ int read_from_client1(int socketD, char *dir)
             // put the requests in the buffer for all the entries in my list
             putRequestsInBuffer();
             //wake up threads
-            pthread_cond_broadcast(&cond_wakeup);
+            pthread_t *threads;
+            threads = malloc(threadsNum * sizeof(pthread_t));
+            for(int i = 0 ; i<threadsNum ;i ++){
+                pthread_create(&threads[i], NULL, threadsWork, &argumentsWorkers);
+            }
+            // pthread_cond_broadcast(&cond_wakeup);
         }
         else if (!strcmp(buffer, "WELCOME"))
         {
@@ -446,19 +453,24 @@ void sendFileList(char *dirName, int clientSocket)
     int numOfFiles = 0;
     char *result, *temp;
     char *str1, *str2;
-    str1 = malloc(BUFSIZ);
+    str1 = malloc(30);
     str2 = malloc(BUFSIZ);
-    result = malloc(BUFSIZ);
+    result = malloc(2*BUFSIZ);
     temp = malloc(BUFSIZ);
+    // strcpy(temp, "");
+    memset( temp, '\0', BUFSIZ );
+
     findFiles(dirName, 0, &temp, &numOfFiles);
     // now I should have the num of files and the string with all the files in temp
+    strcpy(str1, "");
     sprintf(str1, "FILE_LIST %d ", numOfFiles);
+    printf("here we go again  temp is %s \n", temp);
     strcpy(str2, temp);
     appendString(&result, str1, str2);
 
-    // printf("my filelist to send is-----------> %s \n", result);
+    printf("my filelist to send is-----------> %s \n", result);
     // so now just send this final result to the other
-    send(clientSocket, result, strlen(result), 0);
+    send(clientSocket, result, strlen(result) +1, 0);
     // close(clientSocket);
     free(str1);
     free(str2);
@@ -558,7 +570,7 @@ void readFileList(char *source, char *IPsender, int portSender)
         strcpy(temp.pathname, pathName);
         strcpy(temp.version, version);
         temp.portNum = portSender;
-        printf("-------------> %d %s \n", temp.portNum, temp.pathname);
+        // printf("-------------> %d %s \n", temp.portNum, temp.pathname);
         put(temp);
         // pthread_cond_signal(&cond_nonempty);
         sprintf(tobeRemov, "< %s , %s > ", pathName, version);

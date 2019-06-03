@@ -63,6 +63,10 @@ struct buffer_entry retrieve()
         pthread_cond_wait(&cond_nonempty, &mutexBuffer);
     }
     data = myBuffer.elements[myBuffer.start];
+    printf("------------------------------------------------>\n");
+    printf("pathname is -> %s ...\n", data.pathname);
+    printf("------------------------------------------------>\n");
+    fflush(stdout);
     myBuffer.start = (myBuffer.start + 1) % BUF_SIZE;
     myBuffer.count--;
     pthread_mutex_unlock(&mutexBuffer);

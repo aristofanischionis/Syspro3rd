@@ -104,7 +104,6 @@ int connect_to_socket(char *myIP, int port)
 		printf("Error in Connection\n");
 		exit(1);
 	}
-
 	return socketD;
 }
 
